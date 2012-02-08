@@ -46,6 +46,11 @@ modules.builtin
 /Module.symvers
 
 #
+# After make source code, appear files below
+#
+security/tomoyo/
+
+#
 # Doc files
 #
 Documentation/
