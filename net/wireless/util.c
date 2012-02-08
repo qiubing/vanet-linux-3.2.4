@@ -35,10 +35,15 @@ int ieee80211_channel_to_frequency(int chan, enum ieee80211_band band)
 {
 	/* see 802.11 17.3.8.3.2 and Annex J
 	 * there are overlapping channel numbers in 5GHz and 2GHz bands */
+	/**
+	 * VANET need channel 182 and 184 @ 5.9GHz, see 802.11p
+	 * Then comment out 4.9GHz support code
+	 * ZHAO Yao @ VANET
+	 */
 	if (band == IEEE80211_BAND_5GHZ) {
-		if (chan >= 182 && chan <= 196)
-			return 4000 + chan * 5;
-		else
+//		if (chan >= 182 && chan <= 196)
+//			return 4000 + chan * 5;
+//		else
 			return 5000 + chan * 5;
 	} else { /* IEEE80211_BAND_2GHZ */
 		if (chan == 14)

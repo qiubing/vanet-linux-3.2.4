@@ -268,7 +268,11 @@ static bool ath5k_is_standard_channel(short chan, enum ieee80211_band band)
 		/* 802.11j 5.030-5.080 GHz (20MHz) */
 		(chan == 8 || chan == 12 || chan == 16) ||
 		/* 802.11j 4.9GHz (20MHz) */
-		(chan == 184 || chan == 188 || chan == 192 || chan == 196));
+		(chan == 184 || chan == 188 || chan == 192 || chan == 196) ||
+		/* 802.11p 5.8GHz (20MHz) by ZHAO Yao @ VANET */
+		(chan == 172 || chan == 174 || chan == 176 || chan == 178 ||
+		 chan == 180 || chan == 182 || chan == 184)
+		);
 }
 
 static unsigned int
