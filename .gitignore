@@ -49,7 +49,6 @@ modules.builtin
 # After make source code, appear files below
 #
 security/tomoyo/
-Module.symvers
 
 #
 # Doc files
