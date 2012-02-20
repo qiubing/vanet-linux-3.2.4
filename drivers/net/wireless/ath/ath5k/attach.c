@@ -113,7 +113,7 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 	/*
 	 * HW information
 	 */
-	ah->ah_bwmode = AR5K_BWMODE_DEFAULT;
+	ah->ah_bwmode = AR5K_BWMODE_10MHZ;
 	ah->ah_txpower.txp_tpc = AR5K_TUNE_TPC_TXPOWER;
 	ah->ah_imr = 0;
 	ah->ah_retry_short = AR5K_INIT_RETRY_SHORT;
