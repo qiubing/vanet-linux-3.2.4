@@ -22,9 +22,14 @@
 
 #include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 #include "ath5k.h"
 #include "reg.h"
 #include "debug.h"
+
+static int ath5k_modparam_chan_bw;
+module_param_named(chan_bw, ath5k_modparam_chan_bw, int, S_IRUGO);
+MODULE_PARM_DESC(chan_bw, "Channel bandwidth setting (10, 20, 5) MHz");
 
 /**
  * ath5k_hw_post - Power On Self Test helper function
@@ -113,7 +118,25 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 	/*
 	 * HW information
 	 */
-	ah->ah_bwmode = AR5K_BWMODE_10MHZ;
+	/*
+	 * Channel bandwidth setting.
+	 * Powered by VANET
+	 */
+	switch (ath5k_modparam_chan_bw) {
+	case 10:
+		ah->ah_bwmode = AR5K_BWMODE_10MHZ;
+		break;
+	case 20:
+		ah->ah_bwmode = AR5K_BWMODE_DEFAULT;
+		break;
+	case 5:
+		ah->ah_bwmode = AR5K_BWMODE_5MHZ;
+		break;
+	default:
+		printk(KERN_WARNING "ath5k channel bandwidth setting error\n");
+		ret = -EINVAL;
+		goto err;
+	}
 	ah->ah_txpower.txp_tpc = AR5K_TUNE_TPC_TXPOWER;
 	ah->ah_imr = 0;
 	ah->ah_retry_short = AR5K_INIT_RETRY_SHORT;
