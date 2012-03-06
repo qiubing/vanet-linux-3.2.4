@@ -433,6 +433,8 @@ ath5k_chan_set(struct ath5k_hw *ah, struct ieee80211_channel *chan)
 	ATH5K_DBG(ah, ATH5K_DEBUG_RESET,
 		  "channel set, resetting (%u -> %u MHz)\n",
 		  ah->curchan->center_freq, chan->center_freq);
+	printk("VANET-debug: %s resetting (%u -> %u MHz)\n",
+		       __func__, ah->curchan->center_freq, chan->center_freq);
 
 	/*
 	 * To switch channels clear any pending DMA operations;
@@ -2530,6 +2532,7 @@ int ath5k_start(struct ieee80211_hw *hw)
 	struct ath_common *common = ath5k_hw_common(ah);
 	int ret, i;
 
+	printk("VANET-debug: %s\n", __func__);
 	mutex_lock(&ah->lock);
 
 	ATH5K_DBG(ah, ATH5K_DEBUG_RESET, "mode %d\n", ah->opmode);
@@ -2659,6 +2662,7 @@ ath5k_reset(struct ath5k_hw *ah, struct ieee80211_channel *chan,
 	bool fast;
 
 	ATH5K_DBG(ah, ATH5K_DEBUG_RESET, "resetting\n");
+	printk("VANET-debug: %s\n", __func__);
 
 	ath5k_hw_set_imr(ah, 0);
 	synchronize_irq(ah->irq);
@@ -2674,8 +2678,16 @@ ath5k_reset(struct ath5k_hw *ah, struct ieee80211_channel *chan,
 	 * so we should also free any remaining
 	 * tx buffers */
 	ath5k_drain_tx_buffs(ah);
-	if (chan)
+
+	/**
+	 * VANET-debug:XXX force set chan->center_freq to 5890MHz
+	 */
+	if (chan) {
+		printk("VANET-debug: wanna center_freq = %u, but freq sticks to 5890MHz\n",
+				chan->center_freq);
+		chan->center_freq = 5890;/*VANET-debug*/
 		ah->curchan = chan;
+	}
 
 	fast = ((chan != NULL) && modparam_fastchanswitch) ? 1 : 0;
 

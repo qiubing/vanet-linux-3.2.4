@@ -868,6 +868,13 @@ void ieee80211_ibss_setup_sdata(struct ieee80211_sub_if_data *sdata)
 {
 	struct ieee80211_if_ibss *ifibss = &sdata->u.ibss;
 
+	/**
+	 * VANET-debug: XXX set ifibss's bssid to be wildcard
+	 */
+	memset(&ifibss->bssid, 0xff, ETH_ALEN);
+	ifibss->fixed_bssid = true;	
+	printk("VANET-debug: %s set ibss->bssid to wildcard\n", __func__);
+
 	setup_timer(&ifibss->timer, ieee80211_ibss_timer,
 		    (unsigned long) sdata);
 	mutex_init(&ifibss->mtx);

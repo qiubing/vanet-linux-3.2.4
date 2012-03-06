@@ -1895,8 +1895,14 @@ netdev_tx_t ieee80211_subif_start_xmit(struct sk_buff *skb,
 	/*
 	 * Drop unicast frames to unauthorised stations unless they are
 	 * EAPOL frames from the local station.
+	 * 
+	 * VANET-debug:
+	 * if sdata->vif is ADHOC, then do not drop unicast frames
+	 *
 	 */
 	if (unlikely(!ieee80211_vif_is_mesh(&sdata->vif) &&
+		     /* VANET-debug: XXX */
+		     (sdata->vif.type != NL80211_IFTYPE_ADHOC) &&
 		     !is_multicast_ether_addr(hdr.addr1) && !authorized &&
 		     (cpu_to_be16(ethertype) != sdata->control_port_protocol ||
 		      compare_ether_addr(sdata->vif.addr, skb->data + ETH_ALEN)))) {
@@ -1909,6 +1915,7 @@ netdev_tx_t ieee80211_subif_start_xmit(struct sk_buff *skb,
 
 		I802_DEBUG_INC(local->tx_handlers_drop_unauth_port);
 
+		printk("VANET-debug: block in %s\n", __func__);
 		ret = NETDEV_TX_OK;
 		goto fail;
 	}

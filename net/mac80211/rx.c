@@ -1721,9 +1721,15 @@ static bool ieee80211_frame_allowed(struct ieee80211_rx_data *rx, __le16 fc)
 	     compare_ether_addr(ehdr->h_dest, pae_group_addr) == 0))
 		return true;
 
-	if (ieee80211_802_1x_port_control(rx) ||
-	    ieee80211_drop_unencrypted(rx, fc))
+	/**
+	 * VANET: XXX in 802.11p rx->sta is NULL
+	 */
+//	if (ieee80211_802_1x_port_control(rx) || /*original*/
+	if (ieee80211_drop_unencrypted(rx, fc)) {
+		printk("VANET-debug: ieee80211_802_1x_port_control is by passed\n");
+		printk("VANET-debug: but in %s frame is not allowed\n", __func__);
 		return false;
+	}
 
 	return true;
 }
@@ -2930,6 +2936,7 @@ static void __ieee80211_rx_handle_packet(struct ieee80211_hw *hw,
 
 		rx.sta = sta_info_get_bss_rx(prev, hdr->addr2);
 		rx.sdata = prev;
+		printk("VANET-debug: not find sta, in sdata test, consume is false\n");
 		ieee80211_prepare_and_rx_handle(&rx, skb, false);
 
 		prev = sdata;
@@ -2959,6 +2966,14 @@ void ieee80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
 
 	WARN_ON_ONCE(softirq_count() == 0);
+
+	/**     
+	 * VANET-debug: XXX drop all received management frame
+	 */
+	struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)skb->data;
+	if (!ieee80211_is_data(mgmt->frame_control)) {
+		goto drop;
+	}
 
 	if (WARN_ON(status->band < 0 ||
 		    status->band >= IEEE80211_NUM_BANDS))
