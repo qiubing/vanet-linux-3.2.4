@@ -1855,6 +1855,7 @@ ath5k_beacon_send(struct ath5k_hw *ah)
 				ah->bmisscount);
 			ATH5K_DBG(ah, ATH5K_DEBUG_RESET,
 				  "stuck beacon, resetting\n");
+			printk("VANET-debug: %s before queue reset_work\n", __func__);
 			ieee80211_queue_work(ah->hw, &ah->reset_work);
 		}
 		return;
@@ -2171,6 +2172,7 @@ ath5k_intr(int irq, void *dev_id)
 			 */
 			ATH5K_DBG(ah, ATH5K_DEBUG_RESET,
 				  "fatal int, resetting\n");
+			printk("VANET-debug: %s AR5K_INT_FATAL, before queue reset_work\n", __func__);
 			ieee80211_queue_work(ah->hw, &ah->reset_work);
 		} else if (unlikely(status & AR5K_INT_RXORN)) {
 			/*
@@ -2186,6 +2188,7 @@ ath5k_intr(int irq, void *dev_id)
 			if (ah->ah_mac_srev < AR5K_SREV_AR5212) {
 				ATH5K_DBG(ah, ATH5K_DEBUG_RESET,
 					  "rx overrun, resetting\n");
+				printk("VANET-debug: %s before queue reset_work\n", __func__);
 				ieee80211_queue_work(ah->hw, &ah->reset_work);
 			} else
 				ath5k_schedule_rx(ah);
@@ -2261,6 +2264,7 @@ ath5k_tasklet_calibrate(unsigned long data)
 		 * to load new gain values.
 		 */
 		ATH5K_DBG(ah, ATH5K_DEBUG_RESET, "calibration, resetting\n");
+		printk("VANET-debug: %s before queue reset_work\n", __func__);
 		ieee80211_queue_work(ah->hw, &ah->reset_work);
 	}
 	if (ath5k_hw_phy_calibrate(ah, ah->curchan))
@@ -2309,6 +2313,9 @@ ath5k_tx_complete_poll_work(struct work_struct *work)
 			txq = &ah->txqs[i];
 			spin_lock_bh(&txq->lock);
 			if (txq->txq_len > 1) {
+				printk("VANET-debug: ah->txqs[%d]: txq_len=%d, txq_poll_mark=%s\n",
+						i, txq->txq_len,
+						(txq->txq_poll_mark==true)?"true":"false");
 				if (txq->txq_poll_mark) {
 					ATH5K_DBG(ah, ATH5K_DEBUG_XMIT,
 						  "TX queue stuck %d\n",
@@ -2328,6 +2335,7 @@ ath5k_tx_complete_poll_work(struct work_struct *work)
 	if (needreset) {
 		ATH5K_DBG(ah, ATH5K_DEBUG_RESET,
 			  "TX queues stuck, resetting\n");
+		printk("VANET-debug: %s before reset\n", __func__);
 		ath5k_reset(ah, NULL, true);
 	}
 
@@ -2555,6 +2563,7 @@ int ath5k_start(struct ieee80211_hw *hw)
 		AR5K_INT_RXORN | AR5K_INT_TXDESC | AR5K_INT_TXEOL |
 		AR5K_INT_FATAL | AR5K_INT_GLOBAL | AR5K_INT_MIB;
 
+	printk("VANET-debug: %s before reset\n", __func__);
 	ret = ath5k_reset(ah, NULL, false);
 	if (ret)
 		goto done;
@@ -2744,6 +2753,7 @@ static void ath5k_reset_work(struct work_struct *work)
 	struct ath5k_hw *ah = container_of(work, struct ath5k_hw,
 		reset_work);
 
+	printk("VANET-debug: %s before reset\n", __func__);
 	mutex_lock(&ah->lock);
 	ath5k_reset(ah, NULL, true);
 	mutex_unlock(&ah->lock);

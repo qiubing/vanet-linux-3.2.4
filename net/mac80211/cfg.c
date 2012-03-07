@@ -1599,9 +1599,20 @@ static int ieee80211_set_tx_power(struct wiphy *wiphy,
 	case NL80211_TX_POWER_FIXED:
 		if (mbm < 0 || (mbm % 100))
 			return -EOPNOTSUPP;
+		
 		/* TODO: move to cfg80211 when it knows the channel */
-		if (MBM_TO_DBM(mbm) > chan->max_power)
+		/**
+		 * VANET-debug: XXX force chan->max_power to be 30dBm
+		 */
+		if(chan->max_power < 30) {
+			printk("VANET-debug: %s chan->max_power < 30dBm, set it to 30dBm\n",
+					__func__);
+			chan->max_power = 30;
+		}
+		if (MBM_TO_DBM(mbm) > chan->max_power) {
+			printk("VANET-debug: %s power > max_power(%ddBm)\n", __func__, chan->max_power);
 			return -EINVAL;
+		}
 		local->user_power_level = MBM_TO_DBM(mbm);
 		break;
 	}
