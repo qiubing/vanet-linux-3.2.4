@@ -288,8 +288,10 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 	int i;
 
 	sta = kzalloc(sizeof(*sta) + local->hw.sta_data_size, gfp);
-	if (!sta)
+	if (!sta) {
+		printk("VANET-debug: %s no memory to alloc sta\n", __func__);
 		return NULL;
+	}
 
 	spin_lock_init(&sta->lock);
 	INIT_WORK(&sta->drv_unblock_wk, sta_unblock);
@@ -306,6 +308,8 @@ struct sta_info *sta_info_alloc(struct ieee80211_sub_if_data *sdata,
 	ewma_init(&sta->avg_signal, 1024, 8);
 
 	if (sta_prepare_rate_control(local, sta, gfp)) {
+		printk("VANET-debug: %s prepare rate control failed\n",
+				__func__);
 		kfree(sta);
 		return NULL;
 	}

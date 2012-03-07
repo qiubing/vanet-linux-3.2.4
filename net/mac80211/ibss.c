@@ -436,8 +436,14 @@ struct sta_info *ieee80211_ibss_add_sta(struct ieee80211_sub_if_data *sdata,
 		return NULL;
 	}
 
-	if (ifibss->state == IEEE80211_IBSS_MLME_SEARCH)
-		return NULL;
+	if (ifibss->state == IEEE80211_IBSS_MLME_SEARCH) {
+		/**
+		 * VANET-debug: XXX do not care ifibss->state
+		 */
+		printk("VANET-debug: %s ifibss->state is IEEE80211_IBSS_MLME_SEARCH\n",
+				__func__);
+		//return NULL; //original
+	}
 
 	if (compare_ether_addr(bssid, sdata->u.ibss.bssid))
 		return NULL;
@@ -448,10 +454,14 @@ struct sta_info *ieee80211_ibss_add_sta(struct ieee80211_sub_if_data *sdata,
 #endif
 
 	sta = sta_info_alloc(sdata, addr, gfp);
-	if (!sta)
+	if (!sta) {
+		printk("VANET-debug: %s sta info alloc failed\n", __func__);
 		return NULL;
+	}
 
 	sta->last_rx = jiffies;
+	printk("VANET-debug: %s automaticly set sta_flag to WLAN_STA_AUTHORIZED\n",
+			__func__);
 	set_sta_flag(sta, WLAN_STA_AUTHORIZED);
 
 	/* make sure mandatory rates are always added */
