@@ -1545,6 +1545,8 @@ ath5k_tx_queue(struct ieee80211_hw *hw, struct sk_buff *skb,
 	spin_lock_irqsave(&ah->txbuflock, flags);
 	if (list_empty(&ah->txbuf)) {
 		ATH5K_ERR(ah, "no further txbuf available, dropping packet\n");
+		printk("VANET-debug: %s no further txbuf available, dropping packet\n",
+				__func__);
 		spin_unlock_irqrestore(&ah->txbuflock, flags);
 		ieee80211_stop_queues(hw);
 		goto drop_packet;

@@ -1161,6 +1161,9 @@ ieee80211_tx_prepare(struct ieee80211_sub_if_data *sdata,
 		 * it might already be set for injected frames.
 		 */
 	}
+//	printk("VANET-debug: %s info->flags %s IEEE80211_TX_CTL_NO_ACK\n",
+//			__func__,
+//			(info->flags & IEEE80211_TX_CTL_NO_ACK)?"set":"not set");
 
 	if (!(info->flags & IEEE80211_TX_CTL_DONTFRAG)) {
 		if (!(tx->flags & IEEE80211_TX_UNICAST) ||
@@ -1313,6 +1316,7 @@ static int invoke_tx_handlers(struct ieee80211_tx_data *tx)
 
  txh_done:
 	if (unlikely(res == TX_DROP)) {
+		printk("VANET-debug: %s tx failed\n", __func__);
 		I802_DEBUG_INC(tx->local->tx_handlers_drop);
 		while (skb) {
 			struct sk_buff *next;
@@ -1323,6 +1327,7 @@ static int invoke_tx_handlers(struct ieee80211_tx_data *tx)
 		}
 		return -1;
 	} else if (unlikely(res == TX_QUEUED)) {
+		printk("VANET-debug: %s tx queued\n", __func__);
 		I802_DEBUG_INC(tx->local->tx_handlers_queued);
 		return -1;
 	}

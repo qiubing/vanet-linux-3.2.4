@@ -123,6 +123,7 @@ ieee80211_rate_control_ops_get(const char *name)
 	if (!ops && strlen(CONFIG_MAC80211_RC_DEFAULT))
 		ops = ieee80211_try_rate_control_ops_get(CONFIG_MAC80211_RC_DEFAULT);
 	kparam_unblock_sysfs_write(ieee80211_default_rc_algo);
+	printk("VANET-debug: %s select %s\n", __func__, ops->name);
 
 	return ops;
 }
@@ -316,6 +317,7 @@ static void rate_idx_match_mask(struct ieee80211_tx_rate *rate,
 		}
 	}
 
+	printk("VANET-debug: %s DO NOT find suitable rate\n", __func__);
 	/*
 	 * Uh.. No suitable rate exists. This should not really happen with
 	 * sane TX rate mask configurations. However, should someone manage to
