@@ -2219,6 +2219,7 @@ ath5k_intr(int irq, void *dev_id)
 				/* TODO */
 			}
 			if (status & AR5K_INT_MIB) {
+				printk("VANET-debug: %s INT_MIB\n", __func__);
 				ah->stats.mib_intr++;
 				ath5k_hw_update_mib_counters(ah);
 				ath5k_ani_mib_intr(ah);
@@ -2306,6 +2307,7 @@ ath5k_tx_complete_poll_work(struct work_struct *work)
 			tx_complete_work.work);
 	struct ath5k_txq *txq;
 	int i;
+	static unsigned int old_ackfail = 0; //VANET-debug: ack failed info
 	bool needreset = false;
 
 	mutex_lock(&ah->lock);
@@ -2315,9 +2317,10 @@ ath5k_tx_complete_poll_work(struct work_struct *work)
 			txq = &ah->txqs[i];
 			spin_lock_bh(&txq->lock);
 			if (txq->txq_len > 1) {
-				printk("VANET-debug: ah->txqs[%d]: txq_len=%d, txq_poll_mark=%s\n",
+				printk("VANET-debug: txqs[%d]: len=%d poll_mark=%s, ackfailed=%u/3sec\n",
 						i, txq->txq_len,
-						(txq->txq_poll_mark==true)?"true":"false");
+						(txq->txq_poll_mark==true)?"true":"false",
+						ah->stats.ack_fail-old_ackfail);
 				if (txq->txq_poll_mark) {
 					ATH5K_DBG(ah, ATH5K_DEBUG_XMIT,
 						  "TX queue stuck %d\n",
@@ -2333,6 +2336,8 @@ ath5k_tx_complete_poll_work(struct work_struct *work)
 			spin_unlock_bh(&txq->lock);
 		}
 	}
+
+	old_ackfail = ah->stats.ack_fail;
 
 	if (needreset) {
 		ATH5K_DBG(ah, ATH5K_DEBUG_RESET,
@@ -2565,7 +2570,6 @@ int ath5k_start(struct ieee80211_hw *hw)
 		AR5K_INT_RXORN | AR5K_INT_TXDESC | AR5K_INT_TXEOL |
 		AR5K_INT_FATAL | AR5K_INT_GLOBAL | AR5K_INT_MIB;
 
-	printk("VANET-debug: %s before reset\n", __func__);
 	ret = ath5k_reset(ah, NULL, false);
 	if (ret)
 		goto done;

@@ -308,6 +308,7 @@ int ath5k_hw_reset_tx_queue(struct ath5k_hw *ah, unsigned int queue)
 
 	/* Constant bit rate period */
 	if (tq->tqi_cbr_period) {
+		printk("VANET-debug: %s set FRSHED CBR\n", __func__);
 		ath5k_hw_reg_write(ah, AR5K_REG_SM(tq->tqi_cbr_period,
 					AR5K_QCU_CBRCFG_INTVAL) |
 					AR5K_REG_SM(tq->tqi_cbr_overflow_limit,

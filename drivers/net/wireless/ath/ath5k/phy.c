@@ -3106,6 +3106,11 @@ ath5k_setup_rate_powertable(struct ath5k_hw *ah, u16 max_pwr,
 		if (rates[i] > 63)
 			rates[i] = 63;
 	}
+	printk("VANET-debug: %s ", __func__);
+	for(i=0; i < 8; i++)
+		printk("%u ", rates[i]);
+	printk("\n");
+	printk("VANET-debug: ah_txpower txp_offset=%d\n", ah->ah_txpower.txp_offset);
 
 	/* Min/max in 0.25dB units */
 	ah->ah_txpower.txp_min_pwr = 2 * rates[7];
