@@ -21,6 +21,7 @@
 *.i
 *.lst
 *.symtypes
+*.symvers
 *.order
 modules.builtin
 *.elf
@@ -49,7 +50,6 @@ modules.builtin
 # After make source code, appear files below
 #
 security/tomoyo/
-*.symvers
 
 #
 # Doc files
