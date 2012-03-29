@@ -248,6 +248,58 @@ int ip6_input(struct sk_buff *skb)
 		       ip6_input_finish);
 }
 
+/*
+ * VANET: XXX fast forward info, initializing only once
+ */
+static struct in6_addr vanet_mc_grp;
+static unsigned int vanet_init = 0;
+static unsigned char vanet_hhd[ETH_HLEN];
+
+/*
+ * VANET: XXX specific multicast process
+ *                      Powered by Vanet
+ */
+int ip6_fast_forward(struct sk_buff *skb)
+{
+	struct ipv6hdr *ipv6h;
+	int i;
+
+	ipv6h = ipv6_hdr(skb);
+	printk("VANET-debug: %s skb->dev is %s\n", __func__, skb->dev->name);
+
+	if (skb_cow(skb, sizeof(*ipv6h)+LL_RESERVED_SPACE(skb->dev))) {
+		printk("VANET-debug: skb_cow failed, need to kfree\n");
+		goto out_free;
+	}
+
+	if (ipv6h->hop_limit <= 1) {
+		printk("VANET-debug: %s hop_limit less than 1, drop\n", __func__);
+		goto out_free;
+	}
+
+	ipv6h->hop_limit--;
+	IP6CB(skb)->flags |= IP6SKB_FORWARDED;
+
+	if (skb->len > 1400) {
+		printk("VANET-debug: %s MTU(1400) exceed, drop\n", __func__);
+		goto out_free;
+	}
+
+	skb->protocol = htons(ETH_P_IPV6);
+	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
+	skb_push(skb, ETH_HLEN);
+
+	printk("VANET-debug: skb 0x<");
+	for (i=0; i<ETH_HLEN; i++) printk("%2x", skb->data[i]);
+	printk(">\n");
+
+	return dev_queue_xmit(skb);
+
+out_free:
+	kfree(skb);
+	return 0;
+}
+
 int ip6_mc_input(struct sk_buff *skb)
 {
 	const struct ipv6hdr *hdr;
@@ -259,6 +311,20 @@ int ip6_mc_input(struct sk_buff *skb)
 
 	hdr = ipv6_hdr(skb);
 	deliver = ipv6_chk_mcast_addr(skb->dev, &hdr->daddr, NULL);
+
+	/*
+	 * VANET: XXX info init only once
+	 */
+	if (vanet_init < 1) {
+		printk("VANET-debug: multicast forward prepare and set mc_forwarding\n");
+		dev_net(skb->dev)->ipv6.devconf_all->mc_forwarding = 1;
+		ipv6_addr_set(&vanet_mc_grp, 0x000005FF, 0x0, 0x0, 0x37000000);
+		ipv6_eth_mc_map(&vanet_mc_grp, vanet_hhd);
+		memcpy(vanet_hhd+ETH_ALEN, skb->dev->dev_addr, ETH_ALEN);
+		vanet_hhd[ETH_HLEN-2] = 0x86;
+		vanet_hhd[ETH_HLEN-1] = 0xdd;
+		vanet_init++;
+	}
 
 #ifdef CONFIG_IPV6_MROUTE
 	/*
@@ -281,6 +347,8 @@ int ip6_mc_input(struct sk_buff *skb)
 			struct icmp6hdr *icmp6;
 			u8 nexthdr = hdr->nexthdr;
 			int offset;
+
+			printk("VANET-debug: %s check for MLD\n", __func__);
 
 			/* Check if the value of Router Alert
 			 * is for MLD (0x0000).
@@ -327,7 +395,20 @@ int ip6_mc_input(struct sk_buff *skb)
 		}
 
 		if (skb2) {
-			ip6_mr_input(skb2);
+			struct ipv6hdr *ipv6h;
+			int i;
+
+			ipv6h = ipv6_hdr(skb2);
+			if (!ipv6_addr_equal(&vanet_mc_grp, &ipv6h->daddr)) {
+				printk("VANET-debug: %s not vanet addr\n", __func__);
+				printk("VANET-debug: skb's daddr is ");
+				for (i=0; i<16; i++) printk("%2x", ipv6h->daddr.s6_addr[i]);
+				printk("\n");
+
+				ip6_mr_input(skb2);
+			} else {
+				ip6_fast_forward(skb2);
+			}
 		}
 	}
 out:

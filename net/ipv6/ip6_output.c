@@ -92,6 +92,8 @@ static int ip6_dev_loopback_xmit(struct sk_buff *newskb)
 	newskb->ip_summed = CHECKSUM_UNNECESSARY;
 	WARN_ON(!skb_dst(newskb));
 
+	printk("VANET-debug: %s\n", __func__);
+
 	netif_rx_ni(newskb);
 	return 0;
 }
@@ -635,6 +637,8 @@ int ip6_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
 	int ptr, offset = 0, err=0;
 	u8 *prevhdr, nexthdr = 0;
 	struct net *net = dev_net(skb_dst(skb)->dev);
+
+	printk("VANET-debug: %s\n", __func__);
 
 	hlen = ip6_find_1stfragopt(skb, &prevhdr);
 	nexthdr = *prevhdr;
