@@ -265,12 +265,13 @@ int ip6_fast_forward(struct sk_buff *skb)
 	int i;
 
 	ipv6h = ipv6_hdr(skb);
-	printk("VANET-debug: %s skb->dev is %s\n", __func__, skb->dev->name);
+	printk("VANET-debug: %s skb->dev is %s, hop_limit=%u\n",
+			__func__, skb->dev->name, ipv6h->hop_limit);
 
-	if (skb_cow(skb, sizeof(*ipv6h)+LL_RESERVED_SPACE(skb->dev))) {
-		printk("VANET-debug: skb_cow failed, need to kfree\n");
-		goto out_free;
-	}
+//	if (skb_cow(skb, sizeof(*ipv6h)+LL_RESERVED_SPACE(skb->dev))) {
+//		printk("VANET-debug: skb_cow failed, need to kfree\n");
+//		goto out_free;
+//	}
 
 	if (ipv6h->hop_limit <= 1) {
 		printk("VANET-debug: %s hop_limit less than 1, drop\n", __func__);

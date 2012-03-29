@@ -1691,7 +1691,6 @@ netdev_tx_t ieee80211_subif_start_xmit(struct sk_buff *skb,
 	bool wme_sta = false, authorized = false, tdls_auth = false;
 	struct sk_buff *tmp_skb;
 	bool tdls_direct = false;
-	int i;
 
 	if (unlikely(skb->len < ETH_HLEN)) {
 		ret = NETDEV_TX_OK;
@@ -1864,12 +1863,7 @@ netdev_tx_t ieee80211_subif_start_xmit(struct sk_buff *skb,
 	case NL80211_IFTYPE_ADHOC:
 		/* DA SA BSSID */
 		memcpy(hdr.addr1, skb->data, ETH_ALEN);
-		printk("VANET-debug: ieee80211 xmit DA: ");
-		for (i=0; i<ETH_ALEN; i++) printk("%2x", skb->data[i]);
 		memcpy(hdr.addr2, skb->data + ETH_ALEN, ETH_ALEN);
-		printk("   SA: ");
-		for (i=0; i<ETH_ALEN; i++) printk("%2x", skb->data[ETH_ALEN+i]);
-		printk("\n");
 		memcpy(hdr.addr3, sdata->u.ibss.bssid, ETH_ALEN);
 		hdrlen = 24;
 		break;
