@@ -262,17 +262,22 @@ static unsigned char vanet_hhd[ETH_HLEN];
 int ip6_fast_forward(struct sk_buff *skb)
 {
 	struct ipv6hdr *ipv6h;
-	int i;
+//	int i;
 
 	ipv6h = ipv6_hdr(skb);
 	printk("VANET-debug: %s skb->dev is %s, hop_limit=%u\n",
 			__func__, skb->dev->name, ipv6h->hop_limit);
 
-//	if (skb_cow(skb, sizeof(*ipv6h)+LL_RESERVED_SPACE(skb->dev))) {
-//		printk("VANET-debug: skb_cow failed, need to kfree\n");
-//		goto out_free;
-//	}
+	/*
+	 * VANET: XXX after skb_cow, skb's header is changed, any pointing value
+	 * point to skb's header SHOULD be revalued.
+	 */
+	if (skb_cow(skb, sizeof(*ipv6h)+LL_RESERVED_SPACE(skb->dev))) {
+		printk("VANET-debug: skb_cow failed, need to kfree\n");
+		goto out_free;
+	}
 
+	ipv6h = ipv6_hdr(skb);
 	if (ipv6h->hop_limit <= 1) {
 		printk("VANET-debug: %s hop_limit less than 1, drop\n", __func__);
 		goto out_free;
@@ -290,9 +295,9 @@ int ip6_fast_forward(struct sk_buff *skb)
 	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
 	skb_push(skb, ETH_HLEN);
 
-	printk("VANET-debug: skb 0x<");
-	for (i=0; i<ETH_HLEN; i++) printk("%2x", skb->data[i]);
-	printk(">\n");
+//	printk("VANET-debug: skb 0x<");
+//	for (i=0; i<ETH_HLEN; i++) printk("%2x", skb->data[i]);
+//	printk(">\n");
 
 	return dev_queue_xmit(skb);
 
@@ -314,14 +319,20 @@ int ip6_mc_input(struct sk_buff *skb)
 	deliver = ipv6_chk_mcast_addr(skb->dev, &hdr->daddr, NULL);
 
 	/*
-	 * VANET: XXX info init only once
+	 * VANET: TODO info init only once, should move to another initial procedure
 	 */
 	if (vanet_init < 1) {
 		printk("VANET-debug: multicast forward prepare and set mc_forwarding\n");
 		dev_net(skb->dev)->ipv6.devconf_all->mc_forwarding = 1;
+		/*
+		 * VANET: notice BE & LE, multicast address below is FF05::37
+		 */
 		ipv6_addr_set(&vanet_mc_grp, 0x000005FF, 0x0, 0x0, 0x37000000);
 		ipv6_eth_mc_map(&vanet_mc_grp, vanet_hhd);
 		memcpy(vanet_hhd+ETH_ALEN, skb->dev->dev_addr, ETH_ALEN);
+		/*
+		 * VANET: ipv6 in ethernet prototype is 0x86dd.
+		 */
 		vanet_hhd[ETH_HLEN-2] = 0x86;
 		vanet_hhd[ETH_HLEN-1] = 0xdd;
 		vanet_init++;
@@ -408,6 +419,9 @@ int ip6_mc_input(struct sk_buff *skb)
 
 				ip6_mr_input(skb2);
 			} else {
+				/*
+				 * VANET: process start point
+				 */
 				ip6_fast_forward(skb2);
 			}
 		}
