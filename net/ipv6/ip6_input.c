@@ -302,7 +302,7 @@ int ip6_fast_forward(struct sk_buff *skb)
 	return dev_queue_xmit(skb);
 
 out_free:
-	kfree(skb);
+	kfree_skb(skb);
 	return 0;
 }
 
