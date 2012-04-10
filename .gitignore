@@ -23,6 +23,7 @@
 *.symtypes
 *.symvers
 *.order
+net/wireless/Module.symvers
 modules.builtin
 *.elf
 *.bin
