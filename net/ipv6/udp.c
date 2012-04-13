@@ -1099,8 +1099,17 @@ do_udp_sendmsg:
 		}
 		if ((fl6.flowlabel&IPV6_FLOWLABEL_MASK) && !flowlabel) {
 			flowlabel = fl6_sock_lookup(sk, fl6.flowlabel);
-			if (flowlabel == NULL)
-				return -EINVAL;
+			if (flowlabel == NULL) {
+//				printk("VANET-debug: %s flowlabel is NULL\n", __func__);
+				/*
+				 * VANET: XXX TODO FIXME change original path, SHOULD discriminate
+				 * vanet packet from normal packet.
+				 */
+//				return -EINVAL;
+			} else {
+				printk("VANET-debug: WARNING %s flowlabel is not NULL\n",
+						__func__);
+			}
 		}
 		if (!(opt->opt_nflen|opt->opt_flen))
 			opt = NULL;

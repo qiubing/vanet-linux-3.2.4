@@ -677,7 +677,10 @@ int datagram_send_ctl(struct net *net, struct sock *sk,
 			}
 
 			if (fl6->flowlabel&IPV6_FLOWINFO_MASK) {
+				printk("VANET-debug: %s has already set flowlabel\n", __func__);
 				if ((fl6->flowlabel^*(__be32 *)CMSG_DATA(cmsg))&~IPV6_FLOWINFO_MASK) {
+					printk("VANET-debug: %s sendmsg's flowlabel differes from already one",
+							__func__);
 					err = -EINVAL;
 					goto exit_f;
 				}
