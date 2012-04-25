@@ -507,14 +507,7 @@ int ip6_fast_forward(struct sk_buff *skb)
 		printk("VANET-debug: %s hop_limit less than 1, DROP\n", __func__);
 		goto out_free;
 	}
-	/*
-	 * VANET: XXX do not forward self-generated packet
-	 * Check skb->header->saddr
-	 */
-	if (ipv6_addr_equal(&vanet_self_lladdr, &ipv6h->saddr)) {
-		printk("VANET-debug: %s self-generated packet, DROP\n", __func__);
-		goto out_free;
-	}
+
 	/*
 	 * VANET: XXX key process, check duplication of forwarded packet
 	 */
@@ -612,6 +605,16 @@ int ip6_mc_input(struct sk_buff *skb)
 		}
 
 		vanet_init++;
+	}
+
+	/*
+	 * VANET: XXX free self-generated packet, and loopback is now disabled
+	 * even though it is setted.
+	 */
+	if (deliver && ipv6_addr_equal(&vanet_self_lladdr, &hdr->saddr)) {
+		printk("VANET-debug: %s self-generated packet, DROP\n", __func__);
+		kfree_skb(skb);
+		return 0;
 	}
 
 #ifdef CONFIG_IPV6_MROUTE
