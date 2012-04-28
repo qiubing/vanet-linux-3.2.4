@@ -511,10 +511,10 @@ int ip6_fast_forward(struct sk_buff *skb)
 	/*
 	 * VANET: XXX key process, check duplication of forwarded packet
 	 */
-	if (vanet_check_mc_dup(skb)) {
-		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
-		goto out_free;
-	}
+//	if (vanet_check_mc_dup(skb)) {
+//		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
+//		goto out_free;
+//	}
 
 	/*
 	 * VANET: XXX after skb_cow, skb's header is changed, any pointing value
