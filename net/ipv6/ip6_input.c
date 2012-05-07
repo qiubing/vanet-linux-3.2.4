@@ -612,7 +612,7 @@ int ip6_mc_input(struct sk_buff *skb)
 	 * even though it is setted.
 	 */
 	if (deliver && ipv6_addr_equal(&vanet_self_lladdr, &hdr->saddr)) {
-		printk("VANET-debug: %s self-generated packet, DROP\n", __func__);
+//		printk("VANET-debug: %s self-generated packet, DROP\n", __func__);
 		kfree_skb(skb);
 		return 0;
 	}
