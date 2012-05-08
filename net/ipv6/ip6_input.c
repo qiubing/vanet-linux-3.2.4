@@ -284,8 +284,8 @@ static struct in6_addr vanet_self_lladdr;
 static unsigned int vanet_init = 0;
 static unsigned char vanet_hhd[ETH_HLEN];
 
-static struct kmem_cache *vanet_node_cache __read_mostly;
-static struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;
+static struct kmem_cache *vanet_node_cache;
+static struct vn_htentry vn_hash_table[VN_HTLEN];
 
 /*
  * Under spin_lock of hte, run as fast as we can!
@@ -499,7 +499,6 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 int ip6_fast_forward(struct sk_buff *skb)
 {
 	struct ipv6hdr *ipv6h;
-//	int i;
 
 	ipv6h = ipv6_hdr(skb);
 
@@ -511,10 +510,10 @@ int ip6_fast_forward(struct sk_buff *skb)
 	/*
 	 * VANET: XXX key process, check duplication of forwarded packet
 	 */
-//	if (vanet_check_mc_dup(skb)) {
-//		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
-//		goto out_free;
-//	}
+	if (vanet_check_mc_dup(skb)) {
+		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
+		goto out_free;
+	}
 
 	/*
 	 * VANET: XXX after skb_cow, skb's header is changed, any pointing value
@@ -535,12 +534,12 @@ int ip6_fast_forward(struct sk_buff *skb)
 	}
 
 	skb->protocol = htons(ETH_P_IPV6);
+	/*
+	 * VANET: XXX pay attention to vanet_hhd, it's fixed Ethernet Header for 
+	 * all IPv6 multicast packet
+	 */
 	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
 	skb_push(skb, ETH_HLEN);
-
-//	printk("VANET-debug: skb 0x<");
-//	for (i=0; i<ETH_HLEN; i++) printk("%2x", skb->data[i]);
-//	printk(">\n");
 
 	return dev_queue_xmit(skb);
 
