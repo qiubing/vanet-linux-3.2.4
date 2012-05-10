@@ -427,7 +427,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	} else { // add node
 		printk("VANET-debug: do not find node\n");
 		vnp2 = (struct vanet_node *)kmem_cache_alloc(vanet_node_cache,
-								GFP_KERNEL);
+								GFP_ATOMIC);
 		if (vnp2 == NULL) {
 			/*
 			 * Cannot alloc memory immediately, forward packet unconditionally

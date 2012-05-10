@@ -29,7 +29,7 @@
 
 static int ath5k_modparam_chan_bw;
 module_param_named(chan_bw, ath5k_modparam_chan_bw, int, S_IRUGO);
-MODULE_PARM_DESC(chan_bw, "Channel bandwidth setting (10, 20, 5) MHz");
+MODULE_PARM_DESC(chan_bw, "Channel bandwidth setting 10(default), 20, 5MHz");
 
 /**
  * ath5k_hw_post - Power On Self Test helper function
@@ -123,9 +123,6 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 	 * Powered by VANET
 	 */
 	switch (ath5k_modparam_chan_bw) {
-	case 10:
-		ah->ah_bwmode = AR5K_BWMODE_10MHZ;
-		break;
 	case 20:
 		ah->ah_bwmode = AR5K_BWMODE_DEFAULT;
 		break;
@@ -133,9 +130,9 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 		ah->ah_bwmode = AR5K_BWMODE_5MHZ;
 		break;
 	default:
-		printk(KERN_WARNING "ath5k channel bandwidth setting error\n");
-		ret = -EINVAL;
-		goto err;
+		ah->ah_bwmode = AR5K_BWMODE_10MHZ;
+		printk(KERN_WARNING "ath5k channel bandwidth setting 10MHz default\n");
+		break;
 	}
 	ah->ah_txpower.txp_tpc = AR5K_TUNE_TPC_TXPOWER;
 	ah->ah_imr = 0;
