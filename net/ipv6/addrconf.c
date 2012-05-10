@@ -2580,6 +2580,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 	struct inet6_dev *idev = __in6_dev_get(dev);
 	int run_pending = 0;
 	int err;
+	int i;
 
 	switch (event) {
 	case NETDEV_REGISTER:
@@ -2680,6 +2681,31 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 			if (dev->mtu < IPV6_MIN_MTU)
 				addrconf_ifdown(dev, 1);
 		}
+		/*
+		 * VANET: TODO add dev->name config interface;
+		 * device-specific initial stuffs.
+		 *
+		 */
+		printk("VANET-debug: %s dev->name is %s\n", __func__, dev->name);
+		if (!strcmp(dev->name, VANET_IF_NAME)) {
+			printk("VANET-debug: %s set mc_forwarding up\n", __func__);
+			dev_net(dev)->ipv6.devconf_all->mc_forwarding = 1;
+
+			ipv6_get_lladdr(dev, &vanet_self_lladdr, 0);
+			printk("VANET-debug: vanet_self_lladdr is ");
+			for (i=0; i<sizeof(vanet_self_lladdr); i++) {
+				printk("%2x", vanet_self_lladdr.s6_addr[i]);
+			}
+			printk("\n");
+			printk("VANET-debug: vanet wlan's HW addr is ");
+			for (i=0; i<ETH_ALEN-1; i++) {
+				printk("%2x:", dev->dev_addr[i]);
+			}
+			printk("%2x\n", dev->dev_addr[ETH_ALEN-1]);
+			memcpy(vanet_hhd+ETH_ALEN, dev->dev_addr, ETH_ALEN);
+			printk("VANET-debug: ip6_fast_foreward data inital completed\n");
+		}
+
 		break;
 
 	case NETDEV_CHANGEMTU:

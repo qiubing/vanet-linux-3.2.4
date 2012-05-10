@@ -1193,6 +1193,7 @@ static int __init inet6_init(void)
 	if (err)
 		goto sysctl_fail;
 #endif
+	err = vanet_ipv6_init();
 out:
 	return err;
 

@@ -249,43 +249,14 @@ int ip6_input(struct sk_buff *skb)
 }
 
 /*
- * VANET: "header" file stuff
+ * VANET: fast forward data
  */
-#define VANET_BM_LEN 16 // *8 bits
-#define VANET_BM_TOTAL (VANET_BM_LEN*8)
-#define VANET_BM_INTERVAL 32
-#define VANET_BM_OP 80
-#define VANET_BM_OF (VANET_BM_TOTAL-VANET_BM_INTERVAL-1-VANET_BM_OP)
-#define VN_TIMEOUT 60 // HZ
-#define VN_HTLEN 97
-#define VN_HASH(a) ((a.s6_addr16[4] ^ a.s6_addr16[5] ^ a.s6_addr16[6] ^ a.s6_addr16[7]) % VN_HTLEN)
+struct in6_addr vanet_mc_grp;
+struct in6_addr vanet_self_lladdr;
+unsigned char vanet_hhd[ETH_HLEN];
 
-struct vanet_node {
-	struct in6_addr addr;
-	struct vanet_node *next;
-	struct vn_htentry *hte;
-	unsigned long lvt;
-#define VANET_NODE_F_RELEASE 0x00000001
-	unsigned int flags;
-	unsigned char bitmap[VANET_BM_LEN];
-};
-
-struct vn_htentry {
-	spinlock_t lock;
-	struct vanet_node *first;
-	int count;
-};
-
-/*
- * VANET: XXX fast forward data, initializing only once
- */
-static struct in6_addr vanet_mc_grp;
-static struct in6_addr vanet_self_lladdr;
-static unsigned int vanet_init = 0;
-static unsigned char vanet_hhd[ETH_HLEN];
-
-static struct kmem_cache *vanet_node_cache;
-static struct vn_htentry vn_hash_table[VN_HTLEN];
+struct kmem_cache *vanet_node_cache __read_mostly;
+struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;
 
 /*
  * Under spin_lock of hte, run as fast as we can!
@@ -493,6 +464,56 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 }
 
 /*
+ * VANET: init in ipv6 module's normal path
+ */
+int __init vanet_ipv6_init(void)
+{
+	int i;
+	printk("VANET-debug: %s\n", __func__);
+
+	/*
+	 * VANET: notice BE & LE, multicast address below is FF05::37
+	 */
+	ipv6_addr_set(&vanet_mc_grp, 0x000005FF, 0x0, 0x0, 0x37000000);
+	printk("VANET-debug: vanet_mc_grp address is ");
+	for (i=0; i<sizeof(struct in6_addr); i++) {
+		printk("%2x", vanet_mc_grp.s6_addr[i]);
+	}
+	printk("\n");
+	ipv6_eth_mc_map(&vanet_mc_grp, vanet_hhd);
+	// vanet_hhd's source mac address is completed in addrconf_notify()
+	/*
+	 * VANET: ipv6 in ethernet prototype is 0x86dd
+	 */
+	vanet_hhd[ETH_HLEN-2] = 0x86;
+	vanet_hhd[ETH_HLEN-1] = 0xdd;
+
+	/*
+	 * Slub initial
+	 */
+	vanet_node_cache = kmem_cache_create("vanet_node_cache",
+			sizeof(struct vanet_node), 0, 0, NULL);
+
+	if (vanet_node_cache == NULL) {
+		/*
+		 * VANET: TODO XXX how to deal with this tough situation?
+		 */
+		printk("VANET-debug: %s ERROR create vanet_node_cache failed\n", __func__);
+	}
+
+	/*
+	 * Hash table initial
+	 */
+	for (i=0; i<VN_HTLEN; i++) {
+		spin_lock_init(&vn_hash_table[i].lock);
+		vn_hash_table[i].count = 0;
+		vn_hash_table[i].first = NULL;
+	}
+
+	return 0;
+}
+
+/*
  * VANET: XXX specific multicast process
  *                      Powered by Vanet
  */
@@ -551,7 +572,7 @@ out_free:
 int ip6_mc_input(struct sk_buff *skb)
 {
 	const struct ipv6hdr *hdr;
-	int deliver, i;
+	int deliver;
 
 	IP6_UPD_PO_STATS_BH(dev_net(skb_dst(skb)->dev),
 			 ip6_dst_idev(skb_dst(skb)), IPSTATS_MIB_INMCAST,
@@ -559,52 +580,6 @@ int ip6_mc_input(struct sk_buff *skb)
 
 	hdr = ipv6_hdr(skb);
 	deliver = ipv6_chk_mcast_addr(skb->dev, &hdr->daddr, NULL);
-
-	/*
-	 * VANET: TODO info init only once, should move to another initial procedure
-	 */
-	if (vanet_init < 1) {
-		printk("VANET-debug: multicast forward prepare and set mc_forwarding\n");
-		dev_net(skb->dev)->ipv6.devconf_all->mc_forwarding = 1;
-		ipv6_get_lladdr(skb->dev, &vanet_self_lladdr, 0);
-		printk("VANET-debug: vanet_self_lladdr is ");
-		for (i=0; i<sizeof(vanet_self_lladdr); i++) {
-			printk("%2x", vanet_self_lladdr.s6_addr[i]);
-		}
-		printk("\n");
-		/*
-		 * VANET: notice BE & LE, multicast address below is FF05::37
-		 */
-		ipv6_addr_set(&vanet_mc_grp, 0x000005FF, 0x0, 0x0, 0x37000000);
-		printk("VANET-debug: vanet_mc_grp address is ");
-		for (i=0; i<sizeof(struct in6_addr); i++) {
-			printk("%2x", vanet_mc_grp.s6_addr[i]);
-		}
-		printk("\n");
-		ipv6_eth_mc_map(&vanet_mc_grp, vanet_hhd);
-		memcpy(vanet_hhd+ETH_ALEN, skb->dev->dev_addr, ETH_ALEN);
-		/*
-		 * VANET: ipv6 in ethernet prototype is 0x86dd.
-		 */
-		vanet_hhd[ETH_HLEN-2] = 0x86;
-		vanet_hhd[ETH_HLEN-1] = 0xdd;
-
-		/*
-		 * Slub initial
-		 */
-		vanet_node_cache = kmem_cache_create("vanet_node_cache",
-				sizeof(struct vanet_node), 0, 0, NULL);
-		/*
-		 * Hash table initial
-		 */
-		for (i=0; i<VN_HTLEN; i++) {
-			spin_lock_init(&vn_hash_table[i].lock);
-			vn_hash_table[i].count = 0;
-			vn_hash_table[i].first = NULL;
-		}
-
-		vanet_init++;
-	}
 
 	/*
 	 * VANET: XXX free self-generated packet, and loopback is now disabled

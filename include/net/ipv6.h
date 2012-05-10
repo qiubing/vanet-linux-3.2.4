@@ -111,6 +111,43 @@ struct frag_hdr {
 
 #include <net/sock.h>
 
+/**
+ * VANET
+ */
+#define VANET_IF_NAME "wlan0"
+#define VANET_BM_LEN 16 // *8 bits
+#define VANET_BM_TOTAL (VANET_BM_LEN*8)
+#define VANET_BM_INTERVAL 32
+#define VANET_BM_OP 80
+#define VANET_BM_OF (VANET_BM_TOTAL-VANET_BM_INTERVAL-1-VANET_BM_OP)
+#define VN_TIMEOUT 60 //HZ
+#define VN_HTLEN 97
+#define VN_HASH(a) ((a.s6_addr16[4] ^ a.s6_addr16[5] ^ a.s6_addr16[6] ^ a.s6_addr16[7]) % VN_HTLEN)
+
+struct vanet_node {
+	struct in6_addr addr;
+	struct vanet_node *next;
+	struct vn_htentry *hte;
+	unsigned long lvt;
+#define VANET_NODE_F_RELEASE 0x00000001
+	unsigned int flags;
+	unsigned char bitmap[VANET_BM_LEN];
+};
+
+struct vn_htentry {
+	spinlock_t lock;
+	struct vanet_node *first;
+	int count;
+};
+
+extern struct in6_addr vanet_mc_grp;
+extern struct in6_addr vanet_self_lladdr;
+extern unsigned char vanet_hhd[ETH_HLEN];
+
+extern struct kmem_cache *vanet_node_cache __read_mostly;
+extern struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;
+extern int vanet_ipv6_init(void);
+
 /* sysctls */
 extern int sysctl_mld_max_msf;
 extern struct ctl_path net_ipv6_ctl_path[];
