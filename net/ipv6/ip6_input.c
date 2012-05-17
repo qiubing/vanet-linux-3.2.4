@@ -336,7 +336,7 @@ vanet_add_node(struct vn_htentry *hte, struct vanet_node *vn)
 }
 
 static inline int
-vanet_check_packet_id(struct vanet_node *vn, unsigned int id)
+vanet_check_packet_id(struct vanet_node *vn, u32 id)
 {
 	unsigned char *bm = vn->bitmap;
 	int sf, sp, i;
@@ -388,13 +388,23 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	struct ipv6hdr *ipv6h;
 	struct vn_htentry *htep;
 	struct vanet_node *vnp, *vnp2, *release;
-	unsigned int id;
+	u32 id;
 	unsigned char *fl;
 	int i;
 
 	ipv6h = ipv6_hdr(skb);
 	fl = ipv6h->flow_lbl;
-	id = ((fl[0]&0xf0)<<12) + (fl[1]<<8) + fl[2];
+	/*
+	 * VANET: XXX __BIG_ENDIAN and __BIG_ENDIAN_BITFIELD in
+	 * x86 and PowerPC.
+	 */
+#if defined(__LITTLE_ENDIAN_BITFIELD) //x86
+	id = ((fl[0] & 0xf0) << 12) + (fl[1] << 8) + fl[2];
+#elif defined(__BIG_ENDIAN_BITFIELD) //PowerPC
+	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
+#else
+#error	"Not define __XXX_ENDIAN_BITFIELD"
+#endif
 
 	printk("VANET-debug: %s node<", __func__);
 	for (i=0; i<sizeof(struct in6_addr); i++) {
@@ -472,9 +482,13 @@ int __init vanet_ipv6_init(void)
 	printk("VANET-debug: %s\n", __func__);
 
 	/*
-	 * VANET: notice BE & LE, multicast address below is FF05::37
+	 * VANET: TODO (add configuration interface) notice BE & LE,
+	 * VN_MC_GRP's value is now stored in net/ipv6.h temporarily.
 	 */
-	ipv6_addr_set(&vanet_mc_grp, 0x000005FF, 0x0, 0x0, 0x37000000);
+	ipv6_addr_set(&vanet_mc_grp, __cpu_to_be32(VN_MC_GRP_1),
+				     __cpu_to_be32(VN_MC_GRP_2),
+				     __cpu_to_be32(VN_MC_GRP_3),
+				     __cpu_to_be32(VN_MC_GRP_4));
 	printk("VANET-debug: vanet_mc_grp address is ");
 	for (i=0; i<sizeof(struct in6_addr); i++) {
 		printk("%2x", vanet_mc_grp.s6_addr[i]);

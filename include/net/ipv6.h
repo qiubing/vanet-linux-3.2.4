@@ -115,6 +115,10 @@ struct frag_hdr {
  * VANET
  */
 #define VANET_IF_NAME "wlan0"
+#define VN_MC_GRP_1 (0xFF050000)
+#define VN_MC_GRP_2 (0x0)
+#define VN_MC_GRP_3 (0x0)
+#define VN_MC_GRP_4 (0x37)
 #define VANET_BM_LEN 16 // *8 bits
 #define VANET_BM_TOTAL (VANET_BM_LEN*8)
 #define VANET_BM_INTERVAL 32
