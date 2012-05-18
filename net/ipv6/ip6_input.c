@@ -399,8 +399,10 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	 * x86 and PowerPC.
 	 */
 #if defined(__LITTLE_ENDIAN_BITFIELD) //x86
-	id = ((fl[0] & 0xf0) << 12) + (fl[1] << 8) + fl[2];
+	printk("VANET-debug: fl[0] = 0x%x\n", fl[0]);
+	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
 #elif defined(__BIG_ENDIAN_BITFIELD) //PowerPC
+	printk("VANET-debug: fl[0] = 0x%x\n", fl[0]);
 	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
 #else
 #error	"Not define __XXX_ENDIAN_BITFIELD"
