@@ -669,6 +669,7 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 		WLAN_CIPHER_SUITE_AES_CMAC
 	};
 
+	printk("VANET-debug: %s\n", __func__);
 	if ((hw->wiphy->wowlan.flags || hw->wiphy->wowlan.n_patterns)
 #ifdef CONFIG_PM
 	    && (!local->ops->suspend || !local->ops->resume)
@@ -897,8 +898,23 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 
 	/* add one default STA interface if supported */
 	if (local->hw.wiphy->interface_modes & BIT(NL80211_IFTYPE_STATION)) {
-		result = ieee80211_if_add(local, "wlan%d", NULL,
+		/*
+		 * VANET: FIXME if interface_modes not support IFTYPE_STATION.
+		 * XXX vanet network interface specific treatment.
+		 */
+		if (hw->flags & IEEE80211_HW_VANET) {
+			printk("VANET-debug: register vanet network interface\n");
+			/*
+			 * VANET: since IEEE80211_HW_VANET flag is setted in ath5k_init_ah,
+			 * we use name "ath5k%d" for vanet network interface.
+			 */
+			result = ieee80211_if_add(local, "ath5k%d", NULL,
 					  NL80211_IFTYPE_STATION, NULL);
+		} else {
+			printk("VANET-debug: register normal network interface\n");
+			result = ieee80211_if_add(local, "wlan%d", NULL,
+					  NL80211_IFTYPE_STATION, NULL);
+		}
 		if (result)
 			wiphy_warn(local->hw.wiphy,
 				   "Failed to add default virtual iface\n");

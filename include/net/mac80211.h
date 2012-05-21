@@ -1154,6 +1154,10 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_SUPPORTS_PER_STA_GTK		= 1<<21,
 	IEEE80211_HW_AP_LINK_PS				= 1<<22,
 	IEEE80211_HW_TX_AMPDU_SETUP_IN_HW		= 1<<23,
+	/*
+	 * VANET: XXX add vanet specific flag
+	 */
+	IEEE80211_HW_VANET				= 1<<31,
 };
 
 /**

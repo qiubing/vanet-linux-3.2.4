@@ -2964,13 +2964,13 @@ void ieee80211_rx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	struct ieee80211_rate *rate = NULL;
 	struct ieee80211_supported_band *sband;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
+	struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)skb->data;
 
 	WARN_ON_ONCE(softirq_count() == 0);
 
 	/**     
 	 * VANET-debug: XXX drop all received management frame
 	 */
-	struct ieee80211_mgmt *mgmt = (struct ieee80211_mgmt *)skb->data;
 	if (!ieee80211_is_data(mgmt->frame_control)) {
 		goto drop;
 	}

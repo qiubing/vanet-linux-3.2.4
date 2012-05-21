@@ -2370,7 +2370,8 @@ ath5k_init_ah(struct ath5k_hw *ah, const struct ath_bus_ops *bus_ops)
 	hw->flags = IEEE80211_HW_RX_INCLUDES_FCS |
 			IEEE80211_HW_HOST_BROADCAST_PS_BUFFERING |
 			IEEE80211_HW_SIGNAL_DBM |
-			IEEE80211_HW_REPORTS_TX_ACK_STATUS;
+			IEEE80211_HW_REPORTS_TX_ACK_STATUS |
+			IEEE80211_HW_VANET;
 
 	hw->wiphy->interface_modes =
 		BIT(NL80211_IFTYPE_AP) |

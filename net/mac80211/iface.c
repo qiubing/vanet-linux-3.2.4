@@ -1126,6 +1126,7 @@ int ieee80211_if_add(struct ieee80211_local *local, const char *name,
 	struct ieee80211_sub_if_data *sdata = NULL;
 	int ret, i;
 
+	printk("VANET-debug: %s, name: %s\n", __func__, name);
 	ASSERT_RTNL();
 
 	ndev = alloc_netdev_mqs(sizeof(*sdata) + local->hw.vif_data_size,

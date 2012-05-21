@@ -114,7 +114,7 @@ struct frag_hdr {
 /**
  * VANET
  */
-#define VANET_IF_NAME "wlan0"
+#define VANET_IF_NAME "ath5k0"
 #define VN_MC_GRP_1 (0xFF050000)
 #define VN_MC_GRP_2 (0x0)
 #define VN_MC_GRP_3 (0x0)

@@ -2682,8 +2682,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 				addrconf_ifdown(dev, 1);
 		}
 		/*
-		 * VANET: TODO add dev->name config interface;
-		 * device-specific initial stuffs.
+		 * VANET: XXX device-specific initial stuffs.
 		 *
 		 */
 		printk("VANET-debug: %s dev->name is %s\n", __func__, dev->name);
