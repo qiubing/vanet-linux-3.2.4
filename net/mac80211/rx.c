@@ -17,6 +17,7 @@
 #include <linux/etherdevice.h>
 #include <linux/rcupdate.h>
 #include <linux/export.h>
+#include <linux/ipv6.h>
 #include <net/mac80211.h>
 #include <net/ieee80211_radiotap.h>
 
@@ -1746,6 +1747,27 @@ ieee80211_deliver_skb(struct ieee80211_rx_data *rx)
 	struct ethhdr *ehdr = (struct ethhdr *) rx->skb->data;
 	struct sta_info *dsta;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(rx->skb);
+#if defined(CONFIG_PPC32)
+	int i;
+	struct ipv6hdr *ihdr;
+
+	printk("VANET-debug: %s MDA<", __func__);
+	for (i=0; i<6; i++)
+		printk("%2x", ehdr->h_dest[i]);
+	printk(">\tMSA<");
+	for (i=0; i<6; i++)
+		printk("%2x", ehdr->h_source[i]);
+	printk(">\n");
+
+	ihdr = (struct ipv6hdr *)(rx->skb->data + ETH_HLEN);
+	printk("VANET-debug: %s DA<", __func__);
+	for (i=0; i<6; i++)
+		printk("%2x", ihdr->daddr.s6_addr[i]);
+	printk(">\tSA<");
+	for (i=0; i<6; i++)
+		printk("%2x", ihdr->saddr.s6_addr[i]);
+	printk(">\n");
+#endif
 
 	skb = rx->skb;
 	xmit_skb = NULL;

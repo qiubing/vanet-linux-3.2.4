@@ -61,6 +61,9 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 	u32 		pkt_len;
 	struct inet6_dev *idev;
 	struct net *net = dev_net(skb->dev);
+#if defined(CONFIG_PPC32)
+	int i;
+#endif
 
 	if (skb->pkt_type == PACKET_OTHERHOST) {
 		kfree_skb(skb);
@@ -98,6 +101,16 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 		goto err;
 
 	hdr = ipv6_hdr(skb);
+
+#if defined(CONFIG_PPC32)
+	printk("VANET-debug: %s DA<", __func__);
+	for (i=0; i<16; i++)
+		printk("%2x", hdr->daddr.s6_addr[i]);
+	printk(">\tSA<");
+	for (i=0; i<16; i++)
+		printk("%2x", hdr->saddr.s6_addr[i]);
+	printk(">\n");
+#endif
 
 	if (hdr->version != 6)
 		goto err;
@@ -697,8 +710,12 @@ int ip6_mc_input(struct sk_buff *skb)
 	}
 out:
 #endif
-	if (likely(deliver))
+	if (likely(deliver)) {
+#if defined(CONFIG_PPC32)
+		printk("VANET-debug: %s deliver to host stack\n", __func__);
+#endif
 		ip6_input(skb);
+	}
 	else {
 		/* discard */
 		kfree_skb(skb);

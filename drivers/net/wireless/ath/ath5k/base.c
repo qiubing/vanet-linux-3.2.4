@@ -53,6 +53,7 @@
 #include <linux/slab.h>
 #include <linux/etherdevice.h>
 #include <linux/nl80211.h>
+#include <linux/ctype.h>
 
 #include <net/ieee80211_radiotap.h>
 
@@ -1312,8 +1313,33 @@ ath5k_receive_frame(struct ath5k_hw *ah, struct sk_buff *skb,
 		    struct ath5k_rx_status *rs)
 {
 	struct ieee80211_rx_status *rxs;
+	int i, j;
 
 	ath5k_remove_padding(skb);
+
+	/*
+	 * VANET: for PowerPC platform debug.
+	 */
+	printk("VANET-debug: %s\n", __func__);
+	printk("VANET-debug: ***** first 128 bytes of skb data *****\n");
+	for (j=0; j<16; j++) {
+		printk("[%d] ", j);
+		for (i=j*8; i<(j+1)*8; i++) {
+			if (skb->data[i] < 0x10)
+				printk("0%x ", skb->data[i]);
+			else
+				printk("%2x ", skb->data[i]);
+		}
+		printk("\t");
+		for (i=j*8; i<(j+1)*8; i++) {
+			if (isalnum(skb->data[i]) || skb->data[i]==' ')
+				printk("%c", skb->data[i]);
+			else
+				printk(".");
+		}
+		printk("\n");
+	}
+	printk("VANET-debug: ***************************************\n");
 
 	rxs = IEEE80211_SKB_RXCB(skb);
 
@@ -1457,6 +1483,9 @@ ath5k_tasklet_rx(unsigned long data)
 	struct ath5k_desc *ds;
 	int ret;
 
+#if defined(CONFIG_PPC32)
+	printk("VANET-debug: %s\n", __func__);
+#endif
 	spin_lock(&ah->rxbuflock);
 	if (list_empty(&ah->rxbuf)) {
 		ATH5K_WARN(ah, "empty rx buf pool\n");
