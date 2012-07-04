@@ -345,6 +345,8 @@ vanet_add_node(struct vn_htentry *hte, struct vanet_node *vn)
 	vn->next = hte->first;
 	hte->first = vn;
 	hte->count++;
+	printk("VANET-debug: %s hte count[%d] first<0x%p>, vn<0x%p>, vnext<0x%p>\n",
+			__func__, hte->count, hte->first, vn, vn->next);
 	return 0;
 }
 
@@ -412,10 +414,10 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	 * x86 and PowerPC.
 	 */
 #if defined(__LITTLE_ENDIAN_BITFIELD) //x86
-	printk("VANET-debug: fl[0] = 0x%x\n", fl[0]);
+//	printk("VANET-debug: fl[0] = 0x%x\n", fl[0]);
 	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
 #elif defined(__BIG_ENDIAN_BITFIELD) //PowerPC
-	printk("VANET-debug: fl[0] = 0x%x\n", fl[0]);
+//	printk("VANET-debug: fl[0] = 0x%x\n", fl[0]);
 	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
 #else
 #error	"Not define __XXX_ENDIAN_BITFIELD"
@@ -435,8 +437,10 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	spin_unlock(&htep->lock);
 
 	if (release != NULL) {
+		printk("VANET-debug: %s releasing node on hte[%d]\n",
+				__func__, VN_HASH(ipv6h->saddr));
 		for (vnp2=release; vnp2!=NULL; vnp2=vnp2->next) {
-			printk("VANET-debug: %s release node<", __func__);
+			printk("VANET-debug: %s RELEASE node<", __func__);
 			for (i=0; i<sizeof(struct in6_addr); i++)
 				printk("%2x", vnp2->addr.s6_addr[i]);
 			printk(">\n");
@@ -450,7 +454,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 		ret = vanet_check_packet_id(vnp, id);
 		spin_unlock(&htep->lock);
 	} else { // add node
-		printk("VANET-debug: do not find node\n");
+		printk("VANET-debug: DO NOT FIND node\n");
 		vnp2 = (struct vanet_node *)kmem_cache_alloc(vanet_node_cache,
 								GFP_ATOMIC);
 		if (vnp2 == NULL) {
@@ -472,7 +476,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 			ret = vanet_check_packet_id(vnp2, id);
 			vanet_add_node(htep, vnp2);
 			spin_unlock(&htep->lock);
-			printk("VANET-debug: add node<");
+			printk("VANET-debug: ADD node<");
 			for (i=0; i<sizeof(struct in6_addr); i++)
 				printk("%2x", vnp2->addr.s6_addr[i]);
 			printk(">\n");

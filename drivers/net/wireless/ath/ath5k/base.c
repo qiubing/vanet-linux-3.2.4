@@ -1313,13 +1313,14 @@ ath5k_receive_frame(struct ath5k_hw *ah, struct sk_buff *skb,
 		    struct ath5k_rx_status *rs)
 {
 	struct ieee80211_rx_status *rxs;
-	int i, j;
+//	int i, j;
 
 	ath5k_remove_padding(skb);
 
 	/*
 	 * VANET: for PowerPC platform debug.
 	 */
+/*
 	printk("VANET-debug: %s\n", __func__);
 	printk("VANET-debug: ***** first 128 bytes of skb data *****\n");
 	for (j=0; j<16; j++) {
@@ -1340,6 +1341,7 @@ ath5k_receive_frame(struct ath5k_hw *ah, struct sk_buff *skb,
 		printk("\n");
 	}
 	printk("VANET-debug: ***************************************\n");
+*/
 
 	rxs = IEEE80211_SKB_RXCB(skb);
 
