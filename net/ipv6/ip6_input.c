@@ -357,6 +357,12 @@ vanet_check_packet_id(struct vanet_node *vn, u32 id)
 	int sf, sp, i;
 
 	/*
+	 * vanet bitmap only take care VANET_BM_TOTAL packet in a period of time,
+	 * wrap the id.
+	 */
+	id = id % VANET_BM_TOTAL;
+
+	/*
 	 * have forwarded this packet and fast return.
 	 */
 	if (bm[id/8] & (1<<(id%8)))
