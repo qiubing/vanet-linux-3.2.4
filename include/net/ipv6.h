@@ -114,6 +114,8 @@ struct frag_hdr {
 /**
  * VANET
  */
+#define VANET_UNICAST_FORWARD 1
+#define VANET_MRT_FRESH_TIME 3 // HZ. (suppose VANET safety messaging interval is 1 sec)
 #define VANET_IF_NAME "ath5k0"
 #define VN_MC_GRP_1 (0xFF050000)
 #define VN_MC_GRP_2 (0x0)
@@ -124,7 +126,7 @@ struct frag_hdr {
 #define VANET_BM_INTERVAL 32
 #define VANET_BM_OP 80
 #define VANET_BM_OF (VANET_BM_TOTAL-VANET_BM_INTERVAL-1-VANET_BM_OP)
-#define VN_TIMEOUT 60 //HZ
+#define VN_TIMEOUT 60 // HZ
 #define VN_HTLEN 97
 //#define VN_HASH(a) ((a.s6_addr16[4] ^ a.s6_addr16[5] ^ a.s6_addr16[6] ^ a.s6_addr16[7]) % VN_HTLEN)
 #define VN_HASH(a) (0)
@@ -136,6 +138,13 @@ struct vanet_node {
 	unsigned long lvt;
 #define VANET_NODE_F_RELEASE 0x00000001
 	unsigned int flags;
+
+#ifdef VANET_UNICAST_FORWARD
+	unsigned long mrt_update;
+	unsigned char mrt_via[ETH_ALEN];
+	u16 mrt_hl; //even though ipv6 header's hop_limit is u8, here we use u16
+#endif
+
 	unsigned char bitmap[VANET_BM_LEN];
 };
 

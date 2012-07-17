@@ -407,6 +407,9 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 {
 	int ret = 0;
 	struct ipv6hdr *ipv6h;
+#ifdef VANET_UNICAST_FORWARD
+	struct ethhdr *ethh;
+#endif
 	struct vn_htentry *htep;
 	struct vanet_node *vnp, *vnp2, *release;
 	u32 id;
@@ -414,6 +417,9 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	int i;
 
 	ipv6h = ipv6_hdr(skb);
+#ifdef VANET_UNICAST_FORWARD
+	ethh = eth_hdr(skb);
+#endif
 	fl = ipv6h->flow_lbl;
 	/*
 	 * VANET: XXX __BIG_ENDIAN and __BIG_ENDIAN_BITFIELD in
@@ -476,11 +482,15 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 		vnp2->hte = htep;
 
 		spin_lock(&htep->lock);
+		/**
+		 * VANET: TODO re-finding is not needed in NON-SMP while under big lock.
+		 */
 		vnp = vanet_find_node_fast(htep, &ipv6h->saddr);
 		if (vnp == NULL) { // add node can proceed
 			vnp2->lvt = jiffies;
 			ret = vanet_check_packet_id(vnp2, id);
 			vanet_add_node(htep, vnp2);
+			vnp = vnp2;
 			spin_unlock(&htep->lock);
 			printk("VANET-debug: ADD node<");
 			for (i=0; i<sizeof(struct in6_addr); i++)
@@ -494,6 +504,44 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 			printk("VANET-debug: WARNING other process has added this node\n");
 		}
 	}
+
+	/**
+	 * If packet has not yet forwarded(ret == 0), which means I am first receiving this
+	 * vanet node's packet <id> VANET Safety Message.
+	 * Using this packet's info to build & update vanet's Messaging Relation Table (MRT).
+	 * MRT is embedded in vanet_node hash table.
+	 */
+	/**
+	 * VANET: TODO vanet_unicast_forward's code is a mess, need tuning.
+	 */
+#ifdef VANET_UNICAST_FORWARD
+	if (ret == 0) {
+		spin_lock(&htep->lock);
+		if ((ipv6h->hop_limit > vnp->mrt_hl) || (vnp->mrt_hl == 0)) { // find better via or new node
+			vnp->mrt_update = jiffies;
+			vnp->mrt_hl = ipv6h->hop_limit;
+			memcpy(vnp->mrt_via, ethh->h_source, ETH_ALEN);
+		} else {
+			if (time_before(vnp->mrt_update, jiffies - HZ * VANET_MRT_FRESH_TIME)) { // old
+				vnp->mrt_update = jiffies;
+				vnp->mrt_hl = ipv6h->hop_limit;
+				memcpy(vnp->mrt_via, ethh->h_source, ETH_ALEN);
+			} else { // fresh
+				if ((!memcmp(vnp->mrt_via, ethh->h_source, ETH_ALEN)) &&
+							(vnp->mrt_hl == ipv6h->hop_limit)) {
+					vnp->mrt_update = jiffies;
+				}
+			}
+		}
+		spin_unlock(&htep->lock);
+
+		printk("VANET-debug: %s VIA<", __func__);
+		for (i=0; i<ETH_ALEN-1; i++)
+			printk("%2x:", vnp->mrt_via[i]);
+		printk("%2x>\tHOP_LIMIT<%u>\tTIME<%lu>\n", vnp->mrt_via[ETH_ALEN-1],
+						vnp->mrt_hl, vnp->mrt_update);
+	}
+#endif
 
 	return ret;
 }
