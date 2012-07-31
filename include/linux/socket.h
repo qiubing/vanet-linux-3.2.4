@@ -265,6 +265,10 @@ struct ucred {
 #define MSG_NOSIGNAL	0x4000	/* Do not generate SIGPIPE */
 #define MSG_MORE	0x8000	/* Sender will send more */
 #define MSG_WAITFORONE	0x10000	/* recvmmsg(): block until 1+ packets avail */
+/*
+ * VANET: XXX
+ */
+#define MSG_VANET	0x20000 /* vanet message, go through special process */
 
 #define MSG_EOF         MSG_FIN
 

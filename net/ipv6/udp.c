@@ -951,6 +951,355 @@ out:
 	return err;
 }
 
+/*
+ * VANET: unicast routing and sending
+ */
+int ip6_append_data_vanet(struct sock *sk, void *from, int length,
+		  int transhdrlen, int hlimit, int tclass, struct flowi6 *fl6)
+{
+	struct inet_sock *inet = inet_sk(sk);
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	struct sk_buff *skb;
+	int hh_len, alloclen;
+	int err;
+	int csummode = CHECKSUM_NONE;
+	__u8 tx_flags = 0;
+	char *data;
+	int datalen = length - transhdrlen;
+
+	if (skb_queue_empty(&sk->sk_write_queue)) {
+		printk("VANET-debug: %s sk_write_queue is empty\n", __func__);
+	} else {
+		printk("VANET-debug: %s sk_write_queue is not empty, error\n", __func__);
+		return -EINVAL;
+	}
+
+	hh_len = 16;
+	printk("VANET-debug: %s LL_RESERVED_SPACE set to 16\n", __func__);
+
+	if (sk->sk_type == SOCK_DGRAM) {
+		err = sock_tx_timestamp(sk, &tx_flags);
+		if (err)
+			return err;
+	}
+
+	alloclen = length + sizeof(ipv6hdr) + sizeof(frag_hdr);
+	printk("VANET-debug: %s sk_buff alloclen is %d, noblock is false\n",
+			__func__, alloclen);
+	skb = sock_alloc_send_skb(sk, alloclen + hh_len, 0, &err);
+	if (skb == NULL)
+		return err;
+	skb->ip_summed = csummode;
+	skb-csum = 0;
+	skb_reserve(skb, hh_len + sizeof(struct frag_hdr));
+
+	if (sk->sk_type == SOCK_DGRAM)
+		skb_shinfo(skb)->tx_flags = tx_flags;
+
+	data = skb_put(skb, length + sizeof(struct ipv6hdr));
+	skb_set_network_header(skb, 0);
+	data += sizeof(struct ipv6hdr);
+	skb->transport_header = skb->network_header + sizeof(struct ipv6hdr);
+
+	if (ip_generic_getfrag(from, data+transhdrlen, 0, datalen, 0, skb) < 0) {
+		kfree_skb(skb);
+		return -EFAULT;
+	}
+	__skb_queue_tail(&sk->sk_write_queue, skb);
+
+	return 0;
+}
+
+int ip6_local_out_vanet(struct sk_buff *skb)
+{
+	int len, err = 0;
+	struct ipv6hdr *ipv6h;
+
+	len = skb->len - sizeof(struct ipv6hdr);
+	ipv6_hdr(skb)->payload_len = htons(len);
+
+	skb->protocol = htons(ETH_P_IPV6);
+
+	/*
+	 * VANET: XXX unicast packet get hardware header (MAC header)
+	 */
+	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
+	skb_push(skb, ETH_HLEN);
+
+	return dev_queue_xmit(skb);
+
+out_free:
+	kfree_skb(skb);
+	return 0;
+}
+
+int ip6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6, int hl, int tc)
+{
+	struct sk_buff *skb;
+	struct inet_sock *inet = inet_sk(sk);
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	struct net *net = sock_net(sk);
+	struct ipv6hdr *hdr;
+	struct net_device *ndev;
+	unsigned char proto = fl6->flowi6_proto;
+	int err = 0;
+
+	if ((skb = __skb_dequeue(&sk->sk_write_queue)) == NULL)
+		return err;
+
+	if (np->pmtudisc < IPV6_PMTUDISC_DO)
+		skb->local_df = 1;
+
+	hdr = ipv6_hdr(skb);
+	*(__be32 *)hdr = fl6->flowlabel | htonl(0x60000000 | ((int)tc << 20));
+	hdr->hop_limit = hl;
+	hdr->nexthdr = proto;
+	ipv6_addr_copy(&hdr->saddr, &fl6->saddr);
+	ipv6_addr_copy(&hdr->daddr, &fl6->daddr);
+
+	printk("VANET-debug: %s oif = %d\n", __func__, fl6->flowi6_oif);
+	ndev = dev_get_by_index(net, fl6->flowi6_oif);
+	if (ndev) {
+		printk("VANET-debug: %s output device name %s\n",
+				__func__, ndev->name);
+		skb->dev = ndev;
+	} else {
+		printk("VANET-debug: %s do not find output device\n", __func__);
+		kfree_skb(skb);
+		return err;
+	}
+
+	skb->priority = sk->sk_priority;
+	skb->mark = sk->sk_mark;
+
+	err = ip6_local_out_vanet(skb);
+	dev_put(ndev);
+	if (err > 0)
+		err = net_xmit_errno(err);
+
+	return err;
+}
+
+static int udp_v6_push_pending_frames_vanet(struct sock *sk,
+					struct flowi6 *fl6, int hl, int tc)
+{
+	struct sk_buff *skb;
+	struct udphdr *uh;
+	struct udp_sock *up = udp_sock(sk);
+	struct inet_sock *inet = inet_sk(sk);
+	int err = 0;
+	__wsum csum = 0;
+
+	if ((skb = skb_peek(&sk->sk_write_queue)) == NULL)
+		goto out;
+
+	uh = udp_hdr(skb);
+	uh->source = fl6->fl6_sport;
+	uh->dest = fl6->fl6_dport;
+	uh->len = htons(up->len);
+	uh->check = 0;
+
+	if (skb->ip_summed == CHECKSUM_PARTIAL) {
+		udp6_hwcsum_outgoing(sk, skb, &fl6->saddr, &fl6->daddr, up->len);
+		goto send;
+	} else
+		csum = udp_csum_outgoing(sk, skb);
+
+	uh->check = csum_ipv6_magic(&fl6->saddr, &fl6->daddr,
+				    up->len, fl6->flowi6_proto, csum);
+	if (uh->check == 0)
+		uh->check = CSUM_MANGLED_0;
+
+send:
+	err = ip6_push_pending_frames_vanet(sk, fl6, hl, tc);
+	if (err) {
+		if (err == -ENOBUFS && !inet6_sk(sk)->recverr)
+			err = 0;
+	}
+out:
+	up->len = 0;
+	up->pending = 0;
+	return err;
+}
+
+int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
+{
+	struct udp_sock *up = udp_sk(sk);
+	struct inet_sock *inet = inet_sk(sk);
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) msg->msg_name;
+	struct in6_addr *daddr;
+	struct flowi6 fl6;
+	int addr_len = msg->msg_namelen;
+	int ulen = len;
+	int tclass = -1;
+	int hlimit = -1;
+	int corkreq = up->corkflag || msg->msg_flags&MSG_MORE;
+	int is_udplite = IS_UDPLITE(sk);
+	int err;
+
+	/* error check */
+	if (msg->msg_flags & MSG_CONFIRM) {
+		printk("VANET-error: %s msg confirm is not supported\n", __func__);
+		return -EPERM;
+	}
+	if (corkreq) {
+		printk("VANET-error: %s cork is not supported\n", __func__);
+		return -EPERM;
+	}
+	if (is_udplite) {
+		printk("VANET-error: %s udp-lite is not supported\n", __func__);
+		return -EOPNOTSUPP;
+	}
+	if (np->sndflow) {
+		printk("VANET-error: %s sendflow not supported\n", __func__);
+		return -EPERM;
+	}
+	if (sk->sk_state == TCP_ESTABLISHED) {
+		printk("VANET-error: %s established communication not supported\n",
+				__func__);
+		return -EOPNOTSUPP;
+	}
+	if (sin6) {
+		if (addr_len < offsetof(struct sockaddr, sa_data))
+			return -EINVAL;
+		if (sin6->sin6_family != AF_INET6) {
+			printk("VANET-error: %s only support IPv6 now\n", __func__);
+			return -EINVAL;
+		}
+		if (addr_len < SIN6_LEN_RFC2133)
+			return -EINVAL;
+		if (sin6->sin6_port == 0)
+			return -EINVAL;
+		if (ipv6_addr_is_multicast(&sin6->sin6_addr)) {
+			printk("VANET-error: %s do not support multicast message\n",
+					__func__);
+			return -EINVAL;
+		}
+	} else {
+		printk("VANET-error: %s msg_name is NULL\n", __func__);
+		return -EINVAL;
+	}
+	if (len > INT_MAX - sizeof(struct udphdr))
+		return -EMSGSIZE;
+	if (len > 1400) {
+		printk("VANET-error: %s data size is bigger than 1400\n", __func__);
+		return -EPERM;
+	}
+
+	ulen += sizeof(struct udphdr);
+	memset(&fl6, 0, sizeof(fl6));
+	fl6.fl6_dport = sin6->sin6_port;
+	daddr = &sin6->sin6_addr;
+
+	if (addr_len >= sizeof(struct sockaddr_in6) &&
+	    sin6->sin6_scope_id &&
+	    ipv6_addr_type(daddr)&IPV6_ADDR_LINKLOCAL) {
+		printk("VANET-debug: %s using scope_id for oif\n", __func__);
+		fl6.flowi6_oif = sin6->sin6_scope_id;
+	}
+	if (ipv6_addr_is_multicast(daddr)) {
+		printk("VANET-error: %s not support multicast yet\n", __func__);
+		return -EINVAL;
+	}
+	if (!fl6.flowi6_oif)
+		fl6.flowi6_oif = sk->sk_bound_dev_if;
+	if (!fl6.flowi6_oif)
+		fl6.flowi6_oif = np->sticky_pktinfo.ipi6_ifindex;
+
+	fl6.flowi6_mark = sk->sk_mark;
+
+	if (msg->msg_controllen) { // has msg control option
+		struct cmsghdr *cmsg;
+		for (cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
+			if (!CMSG_OK(msg, cmsg))
+				return -EINVAL;
+			if (cmsg->cmsg_level != SOL_IPV6)
+				continue;
+			switch (cmsg->cmsg_type) {
+			case IPV6_FLOWINFO:
+				if (cmsg->cmsg_len < CMSG_LEN(4))
+					return -EINVAL;
+				fl6.flowlabel = IPV6_FLOWINFO_MASK & *(__be32 *)CMSG_DATA(cmsg);
+				break;
+			case IPV6_HOPLIMIT:
+				if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
+					return -EINVAL;
+				hlimit = *(int *)CMSG_DATA(cmsg);
+				if (hlimit < -1 || hlimit > 0xff)
+					return -EINVAL;
+				break;
+			case IPV6_TCLASS:
+				if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
+					return -EINVAL;
+				tclass = *(int *)CMSG_DATA(cmsg);
+				if (tclass < -1 || tclass > 0xff)
+					return -EINVAL;
+				break;
+			default:
+				printk("VANET-debug: %s invalid cmsg type %d\n",
+						__func__, cmsg->cmsg_type);
+				return -EINVAL;
+			}
+		}
+	}
+
+	fl6.flowi6_proto = sk->sk_protocol;
+	if (!ipv6_addr_any(daddr))
+		ipv6_addr_copy(&fl6.daddr, daddr);
+	else
+		fl6.daddr.s6_addr[15] = 0x1;
+	if (ipv6_addr_any(&fl6.saddr) && !ipv6_addr_any(&np->saddr))
+		ipv6_addr_copy(&fl6.saddr, &np->saddr);
+	fl6.fl6_sport = inet->inet_sport;
+
+	if (hlimit < 0) {
+		hlimit = np->hop_limit;
+		if (hlimit < 0) {
+			printk("VANET-debug: %s hoplimit using default 1\n", __func__);
+			hlimit = 1;
+		}
+		printk("VANET-debug: %s hop limit is %d\n", __func__, hlimit);
+	}
+	if (tclass < 0) {
+		tclass = np->tclass;
+		printk("VANET-debug: %s tclass is %d\n", __func__, tclass);
+	}
+
+	lock_sock(sk);
+	if (unlikely(up->pending)) {
+		release_sock(sk);
+		printk("VANET-debug: %s udp cork app bug 2\n", __func__);
+		return -EINVAL;
+	}
+
+	up->pending = AF_INET6;
+	up->len += ulen;
+	if (up->len != ulen) {
+		printk("VANET-debug: %s BUG, up->len is not 0\n", __func__);
+		return -EINVAL;
+	}
+	err = ip6_append_data_vanet(sk, msg->msg_iov, ulen, sizeof(struct udphdr),
+					hlimit, tclass, &fl6);
+	if (err) {
+		printk("VANET-debug: %s udpv6 flush pending frames\n", __func__);
+		struct sk_buff *skb;
+		up->len = 0;
+		up->pending = 0;
+		while ((skb = __skb_dequeue_tail(&sk->sk_write_queue)) != NULL)
+			kfree_skb(skb);
+	} else {
+		err = udp_v6_push_pending_frames_vanet(sk, &fl6, hlimit, tclass);
+	}
+
+	if (err > 0)
+		err = np->recverr ? net_xmit_errno(err) : 0;
+	release_sock(sk);
+	if (!err)
+		return len;
+	return err;
+}
+
 int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		  struct msghdr *msg, size_t len)
 {
@@ -974,6 +1323,13 @@ int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int connected = 0;
 	int is_udplite = IS_UDPLITE(sk);
 	int (*getfrag)(void *, char *, int, int, int, struct sk_buff *);
+
+	if (msg->msg_flags & MSG_VANET) {
+		printk("VANET-debug: %s through vanet process, data length[%u]\n",
+				__func__, len);
+		err = udpv6_sendmsg_vanet(sk, msg, len);
+		/* VANET TODO: err control and return*/
+	}
 
 	/* destination address check */
 	if (sin6) {
