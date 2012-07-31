@@ -1324,9 +1324,9 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 
 	cork->length += length;
 	if (length > mtu) {
+		int proto = sk->sk_protocol;
 		printk("VANET-debug: %s length[%d] > mtu[%d]\n",
 				__func__, length, mtu);
-		int proto = sk->sk_protocol;
 		if (dontfrag && (proto == IPPROTO_UDP || proto == IPPROTO_RAW)){
 			ipv6_local_rxpmtu(sk, fl6, mtu-exthdrlen);
 			return -EMSGSIZE;

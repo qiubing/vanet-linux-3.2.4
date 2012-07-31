@@ -45,6 +45,7 @@
 #include <net/tcp_states.h>
 #include <net/ip6_checksum.h>
 #include <net/xfrm.h>
+#include <net/ipv6.h> //VANET
 
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
@@ -957,8 +958,6 @@ out:
 int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 		  int transhdrlen, int hlimit, int tclass, struct flowi6 *fl6)
 {
-	struct inet_sock *inet = inet_sk(sk);
-	struct ipv6_pinfo *np = inet6_sk(sk);
 	struct sk_buff *skb;
 	int hh_len, alloclen;
 	int err;
@@ -983,14 +982,14 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 			return err;
 	}
 
-	alloclen = length + sizeof(ipv6hdr) + sizeof(frag_hdr);
+	alloclen = length + sizeof(struct ipv6hdr) + sizeof(struct frag_hdr);
 	printk("VANET-debug: %s sk_buff alloclen is %d, noblock is false\n",
 			__func__, alloclen);
 	skb = sock_alloc_send_skb(sk, alloclen + hh_len, 0, &err);
 	if (skb == NULL)
 		return err;
 	skb->ip_summed = csummode;
-	skb-csum = 0;
+	skb->csum = 0;
 	skb_reserve(skb, hh_len + sizeof(struct frag_hdr));
 
 	if (sk->sk_type == SOCK_DGRAM)
@@ -1012,11 +1011,13 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 
 int ip6_local_out_vanet(struct sk_buff *skb)
 {
-	int len, err = 0;
+	int len;
 	struct ipv6hdr *ipv6h;
+	int err;
 
+	ipv6h = ipv6_hdr(skb);
 	len = skb->len - sizeof(struct ipv6hdr);
-	ipv6_hdr(skb)->payload_len = htons(len);
+	ipv6h->payload_len = htons(len);
 
 	skb->protocol = htons(ETH_P_IPV6);
 
@@ -1025,18 +1026,18 @@ int ip6_local_out_vanet(struct sk_buff *skb)
 	 */
 	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
 	skb_push(skb, ETH_HLEN);
-
-	return dev_queue_xmit(skb);
-
-out_free:
-	kfree_skb(skb);
-	return 0;
+	err = vanet_uc_find_path(&ipv6h->daddr, skb->data);
+	if (err == 0)
+		return dev_queue_xmit(skb);
+	else {
+		kfree_skb(skb);
+		return 0;
+	}
 }
 
 int ip6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6, int hl, int tc)
 {
 	struct sk_buff *skb;
-	struct inet_sock *inet = inet_sk(sk);
 	struct ipv6_pinfo *np = inet6_sk(sk);
 	struct net *net = sock_net(sk);
 	struct ipv6hdr *hdr;
@@ -1085,8 +1086,7 @@ static int udp_v6_push_pending_frames_vanet(struct sock *sk,
 {
 	struct sk_buff *skb;
 	struct udphdr *uh;
-	struct udp_sock *up = udp_sock(sk);
-	struct inet_sock *inet = inet_sk(sk);
+	struct udp_sock *up = udp_sk(sk);
 	int err = 0;
 	__wsum csum = 0;
 
@@ -1282,8 +1282,8 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	err = ip6_append_data_vanet(sk, msg->msg_iov, ulen, sizeof(struct udphdr),
 					hlimit, tclass, &fl6);
 	if (err) {
-		printk("VANET-debug: %s udpv6 flush pending frames\n", __func__);
 		struct sk_buff *skb;
+		printk("VANET-debug: %s udpv6 flush pending frames\n", __func__);
 		up->len = 0;
 		up->pending = 0;
 		while ((skb = __skb_dequeue_tail(&sk->sk_write_queue)) != NULL)
@@ -1325,10 +1325,15 @@ int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int (*getfrag)(void *, char *, int, int, int, struct sk_buff *);
 
 	if (msg->msg_flags & MSG_VANET) {
+#ifdef VANET_UNICAST_FORWARD
 		printk("VANET-debug: %s through vanet process, data length[%u]\n",
 				__func__, len);
 		err = udpv6_sendmsg_vanet(sk, msg, len);
 		/* VANET TODO: err control and return*/
+#else
+		printk("VANET-debug: %s get vanet unicast packet, drop\n", __func__);
+		return -EINVAL;
+#endif
 	}
 
 	/* destination address check */

@@ -399,6 +399,32 @@ vanet_check_packet_id(struct vanet_node *vn, u32 id)
 }
 
 /*
+ * VANET: main forwarding procedure of unicast packet
+ * return 0, find path and copy it's MAC address to path;
+ * return -1, do not find path.
+ */
+int vanet_uc_find_path(const struct in6_addr *dest, void *path)
+{
+	struct vn_htentry *htep;
+	struct vanet_node *vnp;
+
+	htep = &vn_hash_table[VN_HASH(dest)];
+
+	spin_lock(&htep->lock);
+	vnp = vanet_find_node_fast(htep, dest);
+	if (vnp != NULL) {
+		memcpy(path, vnp->mrt_via, ETH_ALEN);
+		spin_unlock(&htep->lock);
+		printk("VANET-debug: %s find next hop\n", __func__);
+		return 0;
+	} else {
+		spin_unlock(&htep->lock);
+		printk("VANET-debug: %s DO NOT find next hop\n", __func__);
+		return -1;
+	}
+}
+
+/*
  * VANET: XXX check mcast packet duplicated?
  * return 0, if not forward this packet yet;
  * return 1, have forward this packet.
@@ -459,6 +485,10 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 			kmem_cache_free(vanet_node_cache, vnp2);
 		}
 	}
+
+	/*
+	 * VANET: XXX TODO BUG: during this lock gap vnp may be released!
+	 */
 
 	if (vnp != NULL) { // find node
 		spin_lock(&htep->lock);
