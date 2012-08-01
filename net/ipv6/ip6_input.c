@@ -403,7 +403,7 @@ vanet_check_packet_id(struct vanet_node *vn, u32 id)
  * return 0, find path and copy it's MAC address to path;
  * return -1, do not find path.
  */
-int vanet_uc_find_path(const struct in6_addr *dest, void *path)
+int vanet_uc_find_path(struct in6_addr *dest, void *path)
 {
 	struct vn_htentry *htep;
 	struct vanet_node *vnp;

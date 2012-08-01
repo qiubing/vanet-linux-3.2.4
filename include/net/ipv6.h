@@ -161,7 +161,7 @@ extern unsigned char vanet_hhd[ETH_HLEN];
 extern struct kmem_cache *vanet_node_cache __read_mostly;
 extern struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;
 extern int vanet_ipv6_init(void);
-extern int vanet_uc_find_path(const struct in6_addr *dest, void *path);
+extern int vanet_uc_find_path(struct in6_addr *dest, void *path);
 
 /* sysctls */
 extern int sysctl_mld_max_msf;

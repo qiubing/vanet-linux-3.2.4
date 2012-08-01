@@ -1014,6 +1014,7 @@ int ip6_local_out_vanet(struct sk_buff *skb)
 	int len;
 	struct ipv6hdr *ipv6h;
 	int err;
+	int i;
 
 	ipv6h = ipv6_hdr(skb);
 	len = skb->len - sizeof(struct ipv6hdr);
@@ -1027,6 +1028,22 @@ int ip6_local_out_vanet(struct sk_buff *skb)
 	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
 	skb_push(skb, ETH_HLEN);
 	err = vanet_uc_find_path(&ipv6h->daddr, skb->data);
+	printk("VANET-debug: %s dst addr <", __func__);
+	for (i=0; i<sizeof(struct in6_addr) - 1; i++)
+		printk("%2x:", ipv6h->daddr.s6_addr[i]);
+	printk("%2x>\n", ipv6h->daddr.s6_addr[i]);
+	printk("VANET-debug: %s src addr <", __func__);
+	for (i=0; i<sizeof(struct in6_addr) - 1; i++)
+		printk("%2x:", ipv6h->saddr.s6_addr[i]);
+	printk("%2x>\n", ipv6h->saddr.s6_addr[i]);
+	printk("VANET-debug: %s dst maddr <", __func__);
+	for (i=0; i<ETH_ALEN; i++)
+		printk("%2x ", skb->data[i]);
+	printk(">\n");
+	printk("VANET-debug: %s src maddr <", __func__);
+	for (i=0; i<ETH_ALEN; i++)
+		printk("%2x ", skb->data[i+ETH_ALEN]);
+	printk(">\n");
 	if (err == 0)
 		return dev_queue_xmit(skb);
 	else {
@@ -1251,6 +1268,13 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 		fl6.daddr.s6_addr[15] = 0x1;
 	if (ipv6_addr_any(&fl6.saddr) && !ipv6_addr_any(&np->saddr))
 		ipv6_addr_copy(&fl6.saddr, &np->saddr);
+	if (ipv6_addr_any(&fl6.saddr)) {
+		printk("VANET-debug: %s fl6->saddr is ANY, copy link-local addr into it\n",
+				__func__);
+		ipv6_addr_copy(&fl6.saddr, &vanet_self_lladdr);
+		if (ipv6_addr_any(&fl6.saddr))
+			printk("VANET-debug: %s fl6->saddr is ANY anyway\n", __func__);
+	}
 	fl6.fl6_sport = inet->inet_sport;
 
 	if (hlimit < 0) {
@@ -1324,11 +1348,13 @@ int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int is_udplite = IS_UDPLITE(sk);
 	int (*getfrag)(void *, char *, int, int, int, struct sk_buff *);
 
+	printk("VANET-debug: %s get msg_flags[0x%x]\n", __func__, msg->msg_flags);
 	if (msg->msg_flags & MSG_VANET) {
 #ifdef VANET_UNICAST_FORWARD
 		printk("VANET-debug: %s through vanet process, data length[%u]\n",
 				__func__, len);
 		err = udpv6_sendmsg_vanet(sk, msg, len);
+		return err;
 		/* VANET TODO: err control and return*/
 #else
 		printk("VANET-debug: %s get vanet unicast packet, drop\n", __func__);
@@ -1555,6 +1581,7 @@ back_from_confirm:
 do_append_data:
 	up->len += ulen;
 	getfrag  =  is_udplite ?  udplite_getfrag : ip_generic_getfrag;
+	printk("VANET-debug: %s hlimit[%d] tclass[%d]\n", __func__, hlimit, tclass);
 	err = ip6_append_data(sk, getfrag, msg->msg_iov, ulen,
 		sizeof(struct udphdr), hlimit, tclass, opt, &fl6,
 		(struct rt6_info*)dst,
