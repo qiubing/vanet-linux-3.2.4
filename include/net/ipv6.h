@@ -139,7 +139,7 @@ struct vanet_node {
 #define VANET_NODE_F_RELEASE 0x00000001
 	unsigned int flags;
 
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
 	unsigned long mrt_update;
 	unsigned char mrt_via[ETH_ALEN];
 	u16 mrt_hl; //even though ipv6 header's hop_limit is u8, here we use u16

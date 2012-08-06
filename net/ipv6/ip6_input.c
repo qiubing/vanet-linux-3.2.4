@@ -55,7 +55,7 @@ inline int ip6_rcv_finish( struct sk_buff *skb)
 	return dst_input(skb);
 }
 
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
 /*
  * VANET: unicast packet forward
  * return value is based on dev_queue_xmit() or NET_RX_DROP.
@@ -212,7 +212,7 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 	/* Must drop socket now because of tproxy. */
 	skb_orphan(skb);
 
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
 	if (!ipv6_addr_equal(&vanet_self_lladdr, &hdr->daddr) &&
 			(ipv6_addr_type(&hdr->daddr) & IPV6_ADDR_LINKLOCAL)) {
 		return ip6_uc_forward_vanet(skb, dev);
@@ -488,7 +488,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 {
 	int ret = 0;
 	struct ipv6hdr *ipv6h;
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
 	struct ethhdr *ethh;
 #endif
 	struct vn_htentry *htep;
@@ -498,7 +498,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	int i;
 
 	ipv6h = ipv6_hdr(skb);
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
 	ethh = eth_hdr(skb);
 #endif
 	fl = ipv6h->flow_lbl;
@@ -599,7 +599,8 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	/**
 	 * VANET: TODO vanet_unicast_forward's code is a mess, need tuning.
 	 */
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
+	printk("VANET-debug: %s generating or updating vanet MRT\n", __func__);
 	if (ret == 0) {
 		spin_lock(&htep->lock);
 		if ((ipv6h->hop_limit > vnp->mrt_hl) || (vnp->mrt_hl == 0)) { // find better via or new node

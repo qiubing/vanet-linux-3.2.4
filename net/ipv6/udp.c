@@ -948,7 +948,7 @@ out:
 /*
  * VANET: unicast routing and sending
  */
-#ifdef VANET_UNICAST_FORWARD
+#if VANET_UNICAST_FORWARD
 
 int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 		  int transhdrlen, int hlimit, int tclass, struct flowi6 *fl6)
@@ -1345,9 +1345,9 @@ int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int is_udplite = IS_UDPLITE(sk);
 	int (*getfrag)(void *, char *, int, int, int, struct sk_buff *);
 
-	printk("VANET-debug: %s get msg_flags[0x%x]\n", __func__, msg->msg_flags);
 	if (msg->msg_flags & MSG_VANET) {
-#ifdef VANET_UNICAST_FORWARD
+		printk("VANET-debug: %s get msg_flags[0x%x]\n", __func__, msg->msg_flags);
+#if VANET_UNICAST_FORWARD
 		printk("VANET-debug: %s through vanet process, data length[%u]\n",
 				__func__, len);
 		err = udpv6_sendmsg_vanet(sk, msg, len);
