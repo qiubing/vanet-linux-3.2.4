@@ -859,7 +859,6 @@ static void udp6_hwcsum_outgoing(struct sock *sk, struct sk_buff *skb,
 
 	if (skb_queue_len(&sk->sk_write_queue) == 1) {
 		/* Only one fragment on the socket.  */
-		printk("VANET-debug: %s only one fragment\n", __func__);
 		skb->csum_start = skb_transport_header(skb) - skb->head;
 		skb->csum_offset = offsetof(struct udphdr, check);
 		uh->check = ~csum_ipv6_magic(saddr, daddr, len, IPPROTO_UDP, 0);
@@ -869,8 +868,6 @@ static void udp6_hwcsum_outgoing(struct sock *sk, struct sk_buff *skb,
 		 * fragments on the socket so that all csums of sk_buffs
 		 * should be together
 		 */
-		printk("VANET-debug: %s more than one fragment, HW-checksum won't work\n",
-				__func__);
 		offset = skb_transport_offset(skb);
 		skb->csum = skb_checksum(skb, offset, skb->len - offset, 0);
 
@@ -916,16 +913,12 @@ static int udp_v6_push_pending_frames(struct sock *sk)
 	uh->check = 0;
 
 	if (is_udplite) {
-		printk("VANET-debug: %s using udp-lite\n", __func__);
 		csum = udplite_csum_outgoing(sk, skb);
 	} else if (skb->ip_summed == CHECKSUM_PARTIAL) { /* UDP hardware csum */
-		printk("VANET-debug: %s skb->ip_summed PARTIAL setted, HW csum\n",
-				__func__);
 		udp6_hwcsum_outgoing(sk, skb, &fl6->saddr, &fl6->daddr,
 				     up->len);
 		goto send;
 	} else {
-		printk("VANET-debug: %s ordinary checksum process\n", __func__);
 		csum = udp_csum_outgoing(sk, skb);
 	}
 
@@ -955,6 +948,8 @@ out:
 /*
  * VANET: unicast routing and sending
  */
+#ifdef VANET_UNICAST_FORWARD
+
 int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 		  int transhdrlen, int hlimit, int tclass, struct flowi6 *fl6)
 {
@@ -1324,6 +1319,8 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	return err;
 }
 
+#endif
+
 int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		  struct msghdr *msg, size_t len)
 {
@@ -1415,7 +1412,6 @@ do_udp_sendmsg:
 		return -EMSGSIZE;
 
 	if (up->pending) {
-		printk("VANET-debug: %s there are pending frames\n", __func__);
 		/*
 		 * There are pending frames.
 		 * The socket lock must be held while it's corked.
@@ -1432,7 +1428,6 @@ do_udp_sendmsg:
 		release_sock(sk);
 	}
 	ulen += sizeof(struct udphdr);
-	printk("VANET-debug: %s datasize(%d)+udphdr = %d\n", __func__, len, ulen);
 
 	memset(&fl6, 0, sizeof(fl6));
 
@@ -1444,7 +1439,6 @@ do_udp_sendmsg:
 		daddr = &sin6->sin6_addr;
 
 		if (np->sndflow) {
-			printk("VANET-debug: %s np->sndflow is setted\n", __func__);
 			fl6.flowlabel = sin6->sin6_flowinfo&IPV6_FLOWINFO_MASK;
 			if (fl6.flowlabel&IPV6_FLOWLABEL_MASK) {
 				flowlabel = fl6_sock_lookup(sk, fl6.flowlabel);
@@ -1581,7 +1575,6 @@ back_from_confirm:
 do_append_data:
 	up->len += ulen;
 	getfrag  =  is_udplite ?  udplite_getfrag : ip_generic_getfrag;
-	printk("VANET-debug: %s hlimit[%d] tclass[%d]\n", __func__, hlimit, tclass);
 	err = ip6_append_data(sk, getfrag, msg->msg_iov, ulen,
 		sizeof(struct udphdr), hlimit, tclass, opt, &fl6,
 		(struct rt6_info*)dst,

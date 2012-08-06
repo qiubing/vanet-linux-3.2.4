@@ -55,6 +55,54 @@ inline int ip6_rcv_finish( struct sk_buff *skb)
 	return dst_input(skb);
 }
 
+#ifdef VANET_UNICAST_FORWARD
+/*
+ * VANET: unicast packet forward
+ * return value is based on dev_queue_xmit() or NET_RX_DROP.
+ */
+int ip6_uc_forward_vanet(struct sk_buff *skb, struct net_device *dev)
+{
+	struct ipv6hdr *ipv6h;
+	int err;
+
+	printk("VANET-debug: %s\n", __func__);
+	ipv6h = ipv6_hdr(skb);
+
+	if (ipv6h->hop_limit <= 1) {
+		printk("VANET-debug: %s hop_limit less than 1, DROP\n", __func__);
+		goto out_free;
+	}
+	if (skb->len > 1400) {
+		printk("VANET-debug: %s MTU(1400) exceed, DROP\n", __func__);
+		goto out_free;
+	}
+	if (skb_cow(skb, sizeof(*ipv6h) + LL_RESERVED_SPACE(skb->dev))) {
+		printk("VANET-debug: %s skb_cow failed, need to DROP\n", __func__);
+		goto out_free;
+	}
+
+	ipv6h = ipv6_hdr(skb);
+	ipv6h->hop_limit--;
+	skb->protocol = htons(ETH_P_IPV6);
+	IP6CB(skb)->flags |= IP6SKB_FORWARDED;
+
+	memcpy(skb->data - ETH_HLEN, vanet_hhd, ETH_HLEN);
+	skb_push(skb, ETH_HLEN);
+
+	err = vanet_uc_find_path(&ipv6h->daddr, skb->data);
+	if (err == 0)
+		return dev_queue_xmit(skb);
+
+	/*
+	 * VANET: TODO XXX for (err != 0) which means find path failed, this packet will be
+	 * dropped silently. Need informing the sender of the packet?
+	 */
+out_free:
+	kfree_skb(skb);
+	return NET_RX_DROP;
+}
+#endif
+
 int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, struct net_device *orig_dev)
 {
 	const struct ipv6hdr *hdr;
@@ -163,6 +211,13 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 
 	/* Must drop socket now because of tproxy. */
 	skb_orphan(skb);
+
+#ifdef VANET_UNICAST_FORWARD
+	if (!ipv6_addr_equal(&vanet_self_lladdr, &hdr->daddr) &&
+			(ipv6_addr_type(&hdr->daddr) & IPV6_ADDR_LINKLOCAL)) {
+		return ip6_uc_forward_vanet(skb, dev);
+	}
+#endif
 
 	return NF_HOOK(NFPROTO_IPV6, NF_INET_PRE_ROUTING, skb, dev, NULL,
 		       ip6_rcv_finish);

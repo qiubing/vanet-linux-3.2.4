@@ -638,8 +638,6 @@ int ip6_fragment(struct sk_buff *skb, int (*output)(struct sk_buff *))
 	u8 *prevhdr, nexthdr = 0;
 	struct net *net = dev_net(skb_dst(skb)->dev);
 
-	printk("VANET-debug: %s\n", __func__);
-
 	hlen = ip6_find_1stfragopt(skb, &prevhdr);
 	nexthdr = *prevhdr;
 
@@ -1210,10 +1208,7 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 		/*
 		 * setup for corking
 		 */
-		printk("VANET-debug: %s sk_write_queue is empty, corking setup\n",
-				__func__);
 		if (opt) {
-			printk("VANET-debug: %s has ipv6_txoptions\n", __func__);
 			if (WARN_ON(np->cork.opt))
 				return -EINVAL;
 
@@ -1254,13 +1249,10 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 		np->cork.tclass = tclass;
 		mtu = np->pmtudisc == IPV6_PMTUDISC_PROBE ?
 		      rt->dst.dev->mtu : dst_mtu(&rt->dst);
-		printk("VANET-debug: %s mtu = %d\n", __func__, mtu);
 		if (np->frag_size < mtu) {
 			if (np->frag_size)
 				mtu = np->frag_size;
 		}
-		printk("VANET-debug: %s np->frag_size=%u, then mtu=%d\n",
-				__func__, np->frag_size, mtu);
 		cork->fragsize = mtu;
 		if (dst_allfrag(rt->dst.path))
 			cork->flags |= IPCORK_ALLFRAG;
@@ -1268,13 +1260,9 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 		sk->sk_sndmsg_page = NULL;
 		sk->sk_sndmsg_off = 0;
 		exthdrlen = (opt ? opt->opt_flen : 0) - rt->rt6i_nfheader_len;
-		printk("VANET-debug: %s rt->rt6i_nfheader_len = %u\n",
-				__func__, rt->rt6i_nfheader_len);
 		length += exthdrlen;
 		transhdrlen += exthdrlen;
 		dst_exthdrlen = rt->dst.header_len;
-		printk("VANET-debug: %s exthdrlen=%d, ulen=%d, udphdrlen=%d, dst_exthdrlen=%d\n",
-				__func__, exthdrlen, length, transhdrlen, dst_exthdrlen);
 	} else {
 		rt = (struct rt6_info *)cork->dst;
 		fl6 = &inet->cork.fl.u.ip6;
@@ -1286,7 +1274,6 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 	}
 
 	hh_len = LL_RESERVED_SPACE(rt->dst.dev);
-	printk("VANET-debug: %s hh_len=%d\n", __func__, hh_len);
 
 	fragheaderlen = sizeof(struct ipv6hdr) + rt->rt6i_nfheader_len +
 			(opt ? opt->opt_nflen : 0);
@@ -1325,8 +1312,6 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 	cork->length += length;
 	if (length > mtu) {
 		int proto = sk->sk_protocol;
-		printk("VANET-debug: %s length[%d] > mtu[%d]\n",
-				__func__, length, mtu);
 		if (dontfrag && (proto == IPPROTO_UDP || proto == IPPROTO_RAW)){
 			ipv6_local_rxpmtu(sk, fl6, mtu-exthdrlen);
 			return -EMSGSIZE;
@@ -1345,7 +1330,6 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 	}
 
 	if ((skb = skb_peek_tail(&sk->sk_write_queue)) == NULL) {
-		printk("VANET-debug: %s sk->sk_write_queue's tail is NULL\n", __func__);
 		goto alloc_new_skb;
 	}
 
@@ -1467,7 +1451,6 @@ alloc_new_skb:
 
 			offset += copy;
 			length -= datalen - fraggap;
-			printk("VANET-debug: %s now length is %d\n", __func__, length);
 			transhdrlen = 0;
 			exthdrlen = 0;
 			dst_exthdrlen = 0;
@@ -1477,7 +1460,6 @@ alloc_new_skb:
 			 * Put the packet on the pending queue
 			 */
 			__skb_queue_tail(&sk->sk_write_queue, skb);
-			printk("VANET-debug: %s enqueue skb<0x%p>\n", __func__, skb);
 			continue;
 		}
 
@@ -1589,17 +1571,13 @@ int ip6_push_pending_frames(struct sock *sk)
 
 	if ((skb = __skb_dequeue(&sk->sk_write_queue)) == NULL)
 		goto out;
-	printk("VANET-debug: %s first skb<0x%p>\n", __func__, skb);
 	tail_skb = &(skb_shinfo(skb)->frag_list);
 
 	/* move skb->data to ip header from ext header */
 	if (skb->data < skb_network_header(skb)) {
-		printk("VANET-debug: %s move skb->data to ip header from exthdr\n",
-				__func__);
 		__skb_pull(skb, skb_network_offset(skb));
 	}
 	while ((tmp_skb = __skb_dequeue(&sk->sk_write_queue)) != NULL) {
-		printk("VANET-debug: %s another skb<0x%p>\n", __func__, tmp_skb);
 		__skb_pull(tmp_skb, skb_network_header_len(skb));
 		*tail_skb = tmp_skb;
 		tail_skb = &(tmp_skb->next);
@@ -1612,37 +1590,20 @@ int ip6_push_pending_frames(struct sock *sk)
 
 	/* Allow local fragmentation. */
 	if (np->pmtudisc < IPV6_PMTUDISC_DO) {
-		printk("VANET-debug: %s allow local fragmentation\n", __func__);
 		skb->local_df = 1;
 	}
 
 	ipv6_addr_copy(final_dst, &fl6->daddr);
-#ifdef NET_SKBUFF_DATA_USES_OFFSET
-	printk("VANET-debug: %s sk_buff using offset\n", __func__);
-#else
-	printk("VANET-debug: %s sk_buff not using offset\n", __func__);
-#endif
-	printk("VANET-debug: %s network header len = %u\n",
-			__func__, skb_network_header_len(skb));
-	printk("VANET-debug: %s skb's tranhdr<0x%p>, nethdr<0x%p>, data<0x%p>\n",
-			__func__, skb->transport_header, skb->network_header,
-			skb->data);
 	__skb_pull(skb, skb_network_header_len(skb));
-	printk("VANET-debug: %s after skb_pull network_header_len, data<0x%p>\n",
-			__func__, skb->data);
 	if (opt && opt->opt_flen) {
-		printk("VANET-debug: %s opt->opt_flen is not NULL\n", __func__);
 		ipv6_push_frag_opts(skb, opt, &proto);
 	}
 	if (opt && opt->opt_nflen) {
-		printk("VANET-debug: %s opt->opt_nflen is not NULL\n", __func__);
 		ipv6_push_nfrag_opts(skb, opt, &proto, &final_dst);
 	}
 
 	skb_push(skb, sizeof(struct ipv6hdr));
 	skb_reset_network_header(skb);
-	printk("VANET-debug: %s after reset network header, it's <0x%p>\n",
-			__func__, skb->network_header);
 	hdr = ipv6_hdr(skb);
 
 	*(__be32*)hdr = fl6->flowlabel |
@@ -1650,7 +1611,6 @@ int ip6_push_pending_frames(struct sock *sk)
 
 	hdr->hop_limit = np->cork.hop_limit;
 	hdr->nexthdr = proto;
-	printk("VANET-debug: %s hdr->nexthdr=%u\n", __func__, proto);
 	ipv6_addr_copy(&hdr->saddr, &fl6->saddr);
 	ipv6_addr_copy(&hdr->daddr, final_dst);
 
@@ -1666,11 +1626,6 @@ int ip6_push_pending_frames(struct sock *sk)
 		ICMP6_INC_STATS_BH(net, idev, ICMP6_MIB_OUTMSGS);
 	}
 
-	printk("VANET-debug: %s prev<0x%p>, next<0x%p>\n", __func__,
-			skb->prev, skb->next);
-	printk("VANET-debug: %s nt<0x%p],ts<0x%p>,data<0x%p>,len[%u],dlen[%u]\n",
-			__func__, skb->network_header, skb->transport_header,
-			skb->data, skb->len, skb->data_len);
 	err = ip6_local_out(skb);
 	if (err) {
 		if (err > 0)
