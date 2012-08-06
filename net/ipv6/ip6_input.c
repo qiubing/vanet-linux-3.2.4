@@ -453,6 +453,7 @@ vanet_check_packet_id(struct vanet_node *vn, u32 id)
 	return 0;
 }
 
+#if VANET_UNICAST_FORWARD
 /*
  * VANET: main forwarding procedure of unicast packet
  * return 0, find path and copy it's MAC address to path;
@@ -478,6 +479,7 @@ int vanet_uc_find_path(struct in6_addr *dest, void *path)
 		return -1;
 	}
 }
+#endif
 
 /*
  * VANET: XXX check mcast packet duplicated?
