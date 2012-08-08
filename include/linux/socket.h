@@ -268,7 +268,7 @@ struct ucred {
 /*
  * VANET: XXX
  */
-#define MSG_VANET	0x20000 /* vanet message, go through special process */
+#define MSG_VANET	0x20000 /* vanet msg, through special & fast process */
 
 #define MSG_EOF         MSG_FIN
 

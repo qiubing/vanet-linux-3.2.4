@@ -695,6 +695,7 @@ u32 ieee80211_mandatory_rates(struct ieee80211_local *local,
 	 * since vanet has no management frame which contain support_rates information,
 	 * here we just let mandatory_rates to be 0xff and corresponding to support all
 	 * 11a rates.
+	 * TODO rate control at very begaining time.
 	 */
 	mandatory_rates = 0xff;
 	printk("VANET-debug: %s set mandatory_rates to 0xff, which support all rates\n",

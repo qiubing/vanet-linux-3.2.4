@@ -30,7 +30,6 @@ static struct net_device *ieee80211_add_iface(struct wiphy *wiphy, char *name,
 	struct ieee80211_sub_if_data *sdata;
 	int err;
 
-	printk("VANET-debug: %s before ieee80211_if_add\n", __func__);
 	err = ieee80211_if_add(local, name, &dev, type, params);
 	if (err)
 		return ERR_PTR(err);

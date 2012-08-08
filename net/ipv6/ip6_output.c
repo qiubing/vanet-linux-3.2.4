@@ -1329,9 +1329,8 @@ int ip6_append_data(struct sock *sk, int getfrag(void *from, char *to,
 		}
 	}
 
-	if ((skb = skb_peek_tail(&sk->sk_write_queue)) == NULL) {
+	if ((skb = skb_peek_tail(&sk->sk_write_queue)) == NULL)
 		goto alloc_new_skb;
-	}
 
 	while (length > 0) {
 		/* Check if the remaining data fits into current packet. */
@@ -1574,9 +1573,8 @@ int ip6_push_pending_frames(struct sock *sk)
 	tail_skb = &(skb_shinfo(skb)->frag_list);
 
 	/* move skb->data to ip header from ext header */
-	if (skb->data < skb_network_header(skb)) {
+	if (skb->data < skb_network_header(skb))
 		__skb_pull(skb, skb_network_offset(skb));
-	}
 	while ((tmp_skb = __skb_dequeue(&sk->sk_write_queue)) != NULL) {
 		__skb_pull(tmp_skb, skb_network_header_len(skb));
 		*tail_skb = tmp_skb;
@@ -1589,18 +1587,15 @@ int ip6_push_pending_frames(struct sock *sk)
 	}
 
 	/* Allow local fragmentation. */
-	if (np->pmtudisc < IPV6_PMTUDISC_DO) {
+	if (np->pmtudisc < IPV6_PMTUDISC_DO)
 		skb->local_df = 1;
-	}
 
 	ipv6_addr_copy(final_dst, &fl6->daddr);
 	__skb_pull(skb, skb_network_header_len(skb));
-	if (opt && opt->opt_flen) {
+	if (opt && opt->opt_flen)
 		ipv6_push_frag_opts(skb, opt, &proto);
-	}
-	if (opt && opt->opt_nflen) {
+	if (opt && opt->opt_nflen)
 		ipv6_push_nfrag_opts(skb, opt, &proto, &final_dst);
-	}
 
 	skb_push(skb, sizeof(struct ipv6hdr));
 	skb_reset_network_header(skb);

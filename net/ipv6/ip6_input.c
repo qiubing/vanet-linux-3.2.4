@@ -317,7 +317,7 @@ int ip6_input(struct sk_buff *skb)
 }
 
 /*
- * VANET: fast forward data
+ * VANET: safety multicast packets fast forward
  */
 struct in6_addr vanet_mc_grp;
 struct in6_addr vanet_self_lladdr;
@@ -482,7 +482,7 @@ int vanet_uc_find_path(struct in6_addr *dest, void *path)
 #endif
 
 /*
- * VANET: XXX check mcast packet duplicated?
+ * VANET: XXX check multicast packet duplicated?
  * return 0, if not forward this packet yet;
  * return 1, have forward this packet.
  */
@@ -693,7 +693,7 @@ int __init vanet_ipv6_init(void)
  * VANET: XXX specific multicast process
  *                      Powered by Vanet
  */
-int ip6_fast_forward(struct sk_buff *skb)
+int ip6_mc_fast_forward(struct sk_buff *skb)
 {
 	struct ipv6hdr *ipv6h;
 
@@ -851,7 +851,7 @@ int ip6_mc_input(struct sk_buff *skb)
 				/*
 				 * VANET: process start point
 				 */
-				ip6_fast_forward(skb2);
+				ip6_mc_fast_forward(skb2);
 			}
 		}
 	}

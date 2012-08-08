@@ -2687,6 +2687,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 		 */
 		printk("VANET-debug: %s dev->name is %s\n", __func__, dev->name);
 		if (!strcmp(dev->name, VANET_IF_NAME)) {
+			printk("VANET-debug: %s find vanet interface\n", __func__);
 			printk("VANET-debug: %s set mc_forwarding up\n", __func__);
 			dev_net(dev)->ipv6.devconf_all->mc_forwarding = 1;
 
@@ -2702,7 +2703,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 			}
 			printk("%2x\n", dev->dev_addr[ETH_ALEN-1]);
 			memcpy(vanet_hhd+ETH_ALEN, dev->dev_addr, ETH_ALEN);
-			printk("VANET-debug: ip6_fast_foreward data inital completed\n");
+			printk("VANET-debug: ip6 vanet forward data inital completed\n");
 		}
 
 		break;

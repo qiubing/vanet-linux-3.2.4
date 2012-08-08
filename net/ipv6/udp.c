@@ -912,15 +912,14 @@ static int udp_v6_push_pending_frames(struct sock *sk)
 	uh->len = htons(up->len);
 	uh->check = 0;
 
-	if (is_udplite) {
+	if (is_udplite)
 		csum = udplite_csum_outgoing(sk, skb);
-	} else if (skb->ip_summed == CHECKSUM_PARTIAL) { /* UDP hardware csum */
+	else if (skb->ip_summed == CHECKSUM_PARTIAL) { /* UDP hardware csum */
 		udp6_hwcsum_outgoing(sk, skb, &fl6->saddr, &fl6->daddr,
 				     up->len);
 		goto send;
-	} else {
+	} else
 		csum = udp_csum_outgoing(sk, skb);
-	}
 
 	/* add protocol-dependent pseudo-header */
 	uh->check = csum_ipv6_magic(&fl6->saddr, &fl6->daddr,
@@ -1009,7 +1008,9 @@ int ip6_local_out_vanet(struct sk_buff *skb)
 	int len;
 	struct ipv6hdr *ipv6h;
 	int err;
+#if 1
 	int i;
+#endif
 
 	ipv6h = ipv6_hdr(skb);
 	len = skb->len - sizeof(struct ipv6hdr);
@@ -1023,6 +1024,7 @@ int ip6_local_out_vanet(struct sk_buff *skb)
 	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
 	skb_push(skb, ETH_HLEN);
 	err = vanet_uc_find_path(&ipv6h->daddr, skb->data);
+#if 1 // uc local out debug
 	printk("VANET-debug: %s dst addr <", __func__);
 	for (i=0; i<sizeof(struct in6_addr) - 1; i++)
 		printk("%2x:", ipv6h->daddr.s6_addr[i]);
@@ -1039,6 +1041,7 @@ int ip6_local_out_vanet(struct sk_buff *skb)
 	for (i=0; i<ETH_ALEN; i++)
 		printk("%2x ", skb->data[i+ETH_ALEN]);
 	printk(">\n");
+#endif
 	if (err == 0)
 		return dev_queue_xmit(skb);
 	else {
@@ -1207,7 +1210,7 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	if (addr_len >= sizeof(struct sockaddr_in6) &&
 	    sin6->sin6_scope_id &&
 	    ipv6_addr_type(daddr)&IPV6_ADDR_LINKLOCAL) {
-		printk("VANET-debug: %s using scope_id for oif\n", __func__);
+		printk("VANET-debug: %s using sockaddr's scope_id for oif\n", __func__);
 		fl6.flowi6_oif = sin6->sin6_scope_id;
 	}
 	if (ipv6_addr_is_multicast(daddr)) {
