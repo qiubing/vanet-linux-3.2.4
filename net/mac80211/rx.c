@@ -1747,7 +1747,8 @@ ieee80211_deliver_skb(struct ieee80211_rx_data *rx)
 	struct ethhdr *ehdr = (struct ethhdr *) rx->skb->data;
 	struct sta_info *dsta;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(rx->skb);
-#if defined(CONFIG_PPC32)
+
+#if 0 //debug information for PowerPC
 	int i;
 	struct ipv6hdr *ihdr;
 

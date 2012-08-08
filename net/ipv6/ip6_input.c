@@ -109,7 +109,7 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 	u32 		pkt_len;
 	struct inet6_dev *idev;
 	struct net *net = dev_net(skb->dev);
-#if defined(CONFIG_PPC32)
+#if 0 //debug information for PowerPC
 	int i;
 #endif
 
@@ -150,7 +150,7 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 
 	hdr = ipv6_hdr(skb);
 
-#if defined(CONFIG_PPC32)
+#if 0 //debug information for PowerPC
 	printk("VANET-debug: %s DA<", __func__);
 	for (i=0; i<16; i++)
 		printk("%2x", hdr->daddr.s6_addr[i]);
@@ -509,16 +509,15 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	 * x86 and PowerPC.
 	 */
 #if defined(__LITTLE_ENDIAN_BITFIELD) //x86
-	printk("VANET-debug: %s (LE BITFIELD) fl[0] = 0x%x\n",
-			__func__, fl[0]);
-	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
+//	printk("VANET-debug: %s (LE BITFIELD) fl[0] = 0x%x\n",
+//			__func__, fl[0]);
 #elif defined(__BIG_ENDIAN_BITFIELD) //PowerPC
-	printk("VANET-debug: %s (BE BITFIELD) fl[0] = 0x%x\n",
-			__func__, fl[0]);
-	id = ((fl[0] & 0xf0) << 16) + (fl[1] << 8) + fl[2];
+//	printk("VANET-debug: %s (BE BITFIELD) fl[0] = 0x%x\n",
+//			__func__, fl[0]);
 #else
 #error	"Not define __XXX_ENDIAN_BITFIELD"
 #endif
+	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
 
 	printk("VANET-debug: %s node<", __func__);
 	for (i=0; i<sizeof(struct in6_addr); i++) {
@@ -859,7 +858,7 @@ int ip6_mc_input(struct sk_buff *skb)
 out:
 #endif
 	if (likely(deliver)) {
-#if defined(CONFIG_PPC32)
+#if 0 //debug information for PowerPC
 		printk("VANET-debug: %s deliver to host stack\n", __func__);
 #endif
 		ip6_input(skb);

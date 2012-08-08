@@ -1485,7 +1485,7 @@ ath5k_tasklet_rx(unsigned long data)
 	struct ath5k_desc *ds;
 	int ret;
 
-#if defined(CONFIG_PPC32)
+#if 0 // debug information for PowerPC
 	printk("VANET-debug: %s\n", __func__);
 #endif
 	spin_lock(&ah->rxbuflock);
