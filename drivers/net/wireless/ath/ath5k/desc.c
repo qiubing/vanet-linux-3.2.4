@@ -249,7 +249,7 @@ static int ath5k_hw_setup_4word_tx_desc(struct ath5k_hw *ah,
 	txctl2 = AR5K_REG_SM(tx_tries0, AR5K_4W_TX_DESC_CTL2_XMIT_TRIES0);
 	txctl3 = tx_rate0 & AR5K_4W_TX_DESC_CTL3_XMIT_RATE0;
 
-#ifdef	VANET_DEBUG	
+#if 0
 	u32 rate_code = 0;
 	rate_code = txctl3 << 27;
 	rate_code = rate_code >> 27;

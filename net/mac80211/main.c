@@ -24,6 +24,8 @@
 #include <net/net_namespace.h>
 #include <net/cfg80211.h>
 
+#include <net/ipv6.h> // VANET_IF_NAME_STR
+
 #include "ieee80211_i.h"
 #include "driver-ops.h"
 #include "rate.h"
@@ -903,12 +905,15 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 		 * XXX vanet network interface specific treatment.
 		 */
 		if (hw->flags & IEEE80211_HW_VANET) {
-			printk("VANET-debug: register vanet network interface\n");
+			printk("VANET-debug: %s register vanet network interface %s\n",
+					__func__, VANET_IF_NAME_STR);
 			/*
 			 * VANET: since IEEE80211_HW_VANET flag is setted in ath5k_init_ah,
-			 * we use name "ath5k%d" for vanet network interface.
+			 * we use name VANET_IF_NAME_STR for vanet network interface.
+			 * VANET_IF_NAME_STR is now setted in include/net/ipv6.h,
+			 * TODO change it from wierd location to right place.
 			 */
-			result = ieee80211_if_add(local, "ath5k%d", NULL,
+			result = ieee80211_if_add(local, VANET_IF_NAME_STR, NULL,
 					  NL80211_IFTYPE_STATION, NULL);
 		} else {
 			printk("VANET-debug: register normal network interface\n");

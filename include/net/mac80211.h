@@ -1157,7 +1157,7 @@ enum ieee80211_hw_flags {
 	/*
 	 * VANET: XXX add vanet specific flag
 	 */
-	IEEE80211_HW_VANET				= 1<<31,
+	IEEE80211_HW_VANET				= 1<<28,
 };
 
 /**
