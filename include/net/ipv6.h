@@ -114,7 +114,7 @@ struct frag_hdr {
 /**
  * VANET
  */
-#define VANET_UNICAST_FORWARD 0
+#define VANET_UNICAST_FORWARD 1
 #define VANET_MRT_FRESH_TIME 3 // HZ.
 			// ATTENSTION: suppose VANET safety messaging interval is 1 sec.
 #define VANET_IF_NAME "ath5k0"
@@ -130,8 +130,8 @@ struct frag_hdr {
 #define VANET_BM_OF (VANET_BM_TOTAL-VANET_BM_INTERVAL-1-VANET_BM_OP)
 #define VN_TIMEOUT 60 // HZ
 #define VN_HTLEN 97
-//#define VN_HASH(a) ((a.s6_addr16[4] ^ a.s6_addr16[5] ^ a.s6_addr16[6] ^ a.s6_addr16[7]) % VN_HTLEN)
-#define VN_HASH(a) (0)
+#define VN_HASH(a) ((a.s6_addr16[4] ^ a.s6_addr16[5] ^ a.s6_addr16[6] ^ a.s6_addr16[7]) % VN_HTLEN)
+//#define VN_HASH(a) (0)
 
 struct vanet_node {
 	struct in6_addr addr;
