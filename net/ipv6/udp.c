@@ -961,14 +961,14 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 	int datalen = length - transhdrlen;
 
 	if (skb_queue_empty(&sk->sk_write_queue)) {
-		printk("VANET-debug: %s sk_write_queue is empty\n", __func__);
+//		printk("VANET-debug: %s sk_write_queue is empty\n", __func__);
 	} else {
 		printk("VANET-debug: %s sk_write_queue is not empty, error\n", __func__);
 		return -EINVAL;
 	}
 
 	hh_len = 16;
-	printk("VANET-debug: %s LL_RESERVED_SPACE set to 16\n", __func__);
+//	printk("VANET-debug: %s LL_RESERVED_SPACE set to 16\n", __func__);
 
 	if (sk->sk_type == SOCK_DGRAM) {
 		err = sock_tx_timestamp(sk, &tx_flags);
@@ -977,8 +977,8 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 	}
 
 	alloclen = length + sizeof(struct ipv6hdr) + sizeof(struct frag_hdr);
-	printk("VANET-debug: %s sk_buff alloclen is %d, noblock is false\n",
-			__func__, alloclen);
+//	printk("VANET-debug: %s sk_buff alloclen is %d, noblock is false\n",
+//			__func__, alloclen);
 	skb = sock_alloc_send_skb(sk, alloclen + hh_len, 0, &err);
 	if (skb == NULL)
 		return err;
@@ -1068,16 +1068,16 @@ int ip6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6, int hl, i
 
 	hdr = ipv6_hdr(skb);
 	*(__be32 *)hdr = fl6->flowlabel | htonl(0x60000000 | ((int)tc << 20));
-	hdr->hop_limit = hl;
+	hdr->hop_limit = hl & 0xff;
 	hdr->nexthdr = proto;
 	ipv6_addr_copy(&hdr->saddr, &fl6->saddr);
 	ipv6_addr_copy(&hdr->daddr, &fl6->daddr);
 
-	printk("VANET-debug: %s oif = %d\n", __func__, fl6->flowi6_oif);
+//	printk("VANET-debug: %s oif = %d\n", __func__, fl6->flowi6_oif);
 	ndev = dev_get_by_index(net, fl6->flowi6_oif);
 	if (ndev) {
-		printk("VANET-debug: %s output device name %s\n",
-				__func__, ndev->name);
+//		printk("VANET-debug: %s output device name %s\n",
+//				__func__, ndev->name);
 		skb->dev = ndev;
 	} else {
 		printk("VANET-debug: %s do not find output device\n", __func__);
@@ -1210,7 +1210,7 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	if (addr_len >= sizeof(struct sockaddr_in6) &&
 	    sin6->sin6_scope_id &&
 	    ipv6_addr_type(daddr)&IPV6_ADDR_LINKLOCAL) {
-		printk("VANET-debug: %s using sockaddr's scope_id for oif\n", __func__);
+//		printk("VANET-debug: %s using sockaddr's scope_id for oif\n", __func__);
 		fl6.flowi6_oif = sin6->sin6_scope_id;
 	}
 	if (ipv6_addr_is_multicast(daddr)) {
@@ -1267,8 +1267,8 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	if (ipv6_addr_any(&fl6.saddr) && !ipv6_addr_any(&np->saddr))
 		ipv6_addr_copy(&fl6.saddr, &np->saddr);
 	if (ipv6_addr_any(&fl6.saddr)) {
-		printk("VANET-debug: %s fl6->saddr is ANY, copy link-local addr into it\n",
-				__func__);
+//		printk("VANET-debug: %s fl6->saddr is ANY, copy link-local addr into it\n",
+//				__func__);
 		ipv6_addr_copy(&fl6.saddr, &vanet_self_lladdr);
 		if (ipv6_addr_any(&fl6.saddr))
 			printk("VANET-debug: %s fl6->saddr is ANY anyway\n", __func__);
@@ -1285,7 +1285,7 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	}
 	if (tclass < 0) {
 		tclass = np->tclass;
-		printk("VANET-debug: %s tclass is %d\n", __func__, tclass);
+//		printk("VANET-debug: %s tclass is %d\n", __func__, tclass);
 	}
 
 	lock_sock(sk);
@@ -1349,7 +1349,6 @@ int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int (*getfrag)(void *, char *, int, int, int, struct sk_buff *);
 
 	if (msg->msg_flags & MSG_VANET) {
-		printk("VANET-debug: %s get msg_flags[0x%x]\n", __func__, msg->msg_flags);
 #if VANET_UNICAST_FORWARD
 		printk("VANET-debug: %s through vanet process, data length[%u]\n",
 				__func__, len);

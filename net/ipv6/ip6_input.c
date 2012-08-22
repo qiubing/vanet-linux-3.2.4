@@ -603,7 +603,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	 * VANET: TODO vanet_unicast_forward's code is a mess, need tuning.
 	 */
 #if VANET_UNICAST_FORWARD
-	printk("VANET-debug: %s generating or updating vanet MRT\n", __func__);
+//	printk("VANET-debug: %s generating or updating vanet MRT\n", __func__);
 	if (ret == 0) {
 		spin_lock(&htep->lock);
 		if ((ipv6h->hop_limit > vnp->mrt_hl) || (vnp->mrt_hl == 0)) { // find better via or new node
