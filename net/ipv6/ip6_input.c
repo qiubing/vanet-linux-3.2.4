@@ -327,7 +327,7 @@ struct kmem_cache *vanet_node_cache __read_mostly;
 struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;
 
 /*
- * Under spin_lock of hte, run as fast as we can!
+ * Under spin_lock_bh of hte, run as fast as we can!
  */
 static inline struct vanet_node *
 vanet_find_node_release(struct vn_htentry *htep, struct in6_addr *addr, struct vanet_node **release)
@@ -466,15 +466,15 @@ int vanet_uc_find_path(struct in6_addr *dest, void *path)
 
 	htep = &vn_hash_table[VN_HASH((*dest))];
 
-	spin_lock(&htep->lock);
+	spin_lock_bh(&htep->lock);
 	vnp = vanet_find_node_fast(htep, dest);
 	if (vnp != NULL) {
 		memcpy(path, vnp->mrt_via, ETH_ALEN);
-		spin_unlock(&htep->lock);
+		spin_unlock_bh(&htep->lock);
 		printk("VANET-debug: %s find next hop\n", __func__);
 		return 0;
 	} else {
-		spin_unlock(&htep->lock);
+		spin_unlock_bh(&htep->lock);
 		printk("VANET-debug: %s DO NOT find next hop\n", __func__);
 		return -1;
 	}
@@ -528,9 +528,9 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	htep = &vn_hash_table[VN_HASH(ipv6h->saddr)];
 	release = NULL;
 
-	spin_lock(&htep->lock);
+	spin_lock_bh(&htep->lock);
 	vnp = vanet_find_node_release(htep, &ipv6h->saddr, &release);
-	spin_unlock(&htep->lock);
+	spin_unlock_bh(&htep->lock);
 
 	if (release != NULL) {
 		printk("VANET-debug: %s releasing node on hte[%d]\n",
@@ -549,10 +549,10 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	 */
 
 	if (vnp != NULL) { // find node
-		spin_lock(&htep->lock);
+		spin_lock_bh(&htep->lock);
 		vnp->lvt = jiffies;
 		ret = vanet_check_packet_id(vnp, id);
-		spin_unlock(&htep->lock);
+		spin_unlock_bh(&htep->lock);
 	} else { // add node
 		printk("VANET-debug: DO NOT FIND node\n");
 		vnp2 = (struct vanet_node *)kmem_cache_alloc(vanet_node_cache,
@@ -569,7 +569,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 		vnp2->next = NULL;
 		vnp2->hte = htep;
 
-		spin_lock(&htep->lock);
+		spin_lock_bh(&htep->lock);
 		/**
 		 * VANET: TODO re-finding is not needed in NON-SMP while under big lock.
 		 */
@@ -579,7 +579,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 			ret = vanet_check_packet_id(vnp2, id);
 			vanet_add_node(htep, vnp2);
 			vnp = vnp2;
-			spin_unlock(&htep->lock);
+			spin_unlock_bh(&htep->lock);
 			printk("VANET-debug: ADD node<");
 			for (i=0; i<sizeof(struct in6_addr); i++)
 				printk("%2x", vnp2->addr.s6_addr[i]);
@@ -587,7 +587,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 		} else { // during former process, node is added by other's
 			vnp->lvt = jiffies;
 			ret = vanet_check_packet_id(vnp, id);
-			spin_unlock(&htep->lock);
+			spin_unlock_bh(&htep->lock);
 			kmem_cache_free(vanet_node_cache, vnp2);
 			printk("VANET-debug: WARNING other process has added this node\n");
 		}
@@ -605,7 +605,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 #if VANET_UNICAST_FORWARD
 //	printk("VANET-debug: %s generating or updating vanet MRT\n", __func__);
 	if (ret == 0) {
-		spin_lock(&htep->lock);
+		spin_lock_bh(&htep->lock);
 		if ((ipv6h->hop_limit > vnp->mrt_hl) || (vnp->mrt_hl == 0)) { // find better via or new node
 			vnp->mrt_update = jiffies;
 			vnp->mrt_hl = ipv6h->hop_limit;
@@ -622,7 +622,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 				}
 			}
 		}
-		spin_unlock(&htep->lock);
+		spin_unlock_bh(&htep->lock);
 
 		printk("VANET-debug: %s VIA<", __func__);
 		for (i=0; i<ETH_ALEN-1; i++)
