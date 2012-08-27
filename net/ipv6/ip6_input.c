@@ -464,7 +464,7 @@ int vanet_uc_find_path(struct in6_addr *dest, void *path)
 	struct vn_htentry *htep;
 	struct vanet_node *vnp;
 
-	htep = &vn_hash_table[VN_HASH((*dest))];
+	htep = &vn_hash_table[VN_HASH(*dest)];
 
 	spin_lock_bh(&htep->lock);
 	vnp = vanet_find_node_fast(htep, dest);
