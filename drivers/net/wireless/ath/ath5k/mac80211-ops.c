@@ -195,7 +195,9 @@ ath5k_config(struct ieee80211_hw *hw, u32 changed)
 	mutex_lock(&ah->lock);
 
 	if (changed & IEEE80211_CONF_CHANGE_CHANNEL) {
+		printk("VANET-DEBUG: %s CHANNEL_SWITCH_START\n", __func__);
 		ret = ath5k_chan_set(ah, conf->channel);
+		printk("VANET-DEBUG: %s CHANNEL_SWITCH_FINISHED\n", __func__);
 		if (ret < 0)
 			goto unlock;
 	}

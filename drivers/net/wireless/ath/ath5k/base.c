@@ -358,6 +358,7 @@ ath5k_setup_bands(struct ieee80211_hw *hw)
 
 	if (test_bit(AR5K_MODE_11G, ah->ah_capabilities.cap_mode)) {
 		/* G mode */
+		printk("VANET-DEBUG: %s AR5K_MODE_11G\n", __func__);
 		memcpy(sband->bitrates, &ath5k_rates[0],
 		       sizeof(struct ieee80211_rate) * 12);
 		sband->n_bitrates = 12;
@@ -371,6 +372,7 @@ ath5k_setup_bands(struct ieee80211_hw *hw)
 		max_c -= count_c;
 	} else if (test_bit(AR5K_MODE_11B, ah->ah_capabilities.cap_mode)) {
 		/* B mode */
+		printk("VANET-DEBUG: %s AR5K_MODE_11B\n", __func__);
 		memcpy(sband->bitrates, &ath5k_rates[0],
 		       sizeof(struct ieee80211_rate) * 4);
 		sband->n_bitrates = 4;
@@ -400,6 +402,7 @@ ath5k_setup_bands(struct ieee80211_hw *hw)
 
 	/* 5GHz band, A mode */
 	if (test_bit(AR5K_MODE_11A, ah->ah_capabilities.cap_mode)) {
+		printk("VANET-DEBUG: %s AR5K_MODE_11G\n", __func__);
 		sband = &ah->sbands[IEEE80211_BAND_5GHZ];
 		sband->band = IEEE80211_BAND_5GHZ;
 		sband->bitrates = &ah->rates[IEEE80211_BAND_5GHZ][0];
@@ -2481,6 +2484,8 @@ ath5k_init_ah(struct ath5k_hw *ah, const struct ath_bus_ops *bus_ops)
 					ah->ah_mac_srev,
 					ah->ah_phy_revision);
 
+	printk("VANET-DEBUG: RADIO: 0x%x, EE: 0x%x",
+		ah->ah_radio, ah->ah_ee_version);
 	if (!ah->ah_single_chip) {
 		/* Single chip radio (!RF5111) */
 		if (ah->ah_radio_5ghz_revision &&
@@ -2732,9 +2737,9 @@ ath5k_reset(struct ath5k_hw *ah, struct ieee80211_channel *chan,
 	 * VANET-debug:XXX force set chan->center_freq to 5890MHz
 	 */
 	if (chan) {
-		printk("VANET-debug: wanna center_freq = %u, but freq sticks to 5890MHz\n",
-				chan->center_freq);
-		chan->center_freq = 5890;/*VANET-debug*/
+//		printk("VANET-debug: wanna center_freq = %u, but freq sticks to 5890MHz\n",
+//				chan->center_freq);
+//		chan->center_freq = 5890;/*VANET-debug*/
 		ah->curchan = chan;
 	}
 

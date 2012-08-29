@@ -1108,6 +1108,7 @@ int ath5k_hw_reset(struct ath5k_hw *ah, enum nl80211_iftype op_mode,
 	 * go on. If it fails continue with a normal reset.
 	 */
 	if (fast) {
+		printk("VANET-DEBUG: %s FAST_CHANNEL_SWITCHING\n", __func__);
 		ret = ath5k_hw_phy_init(ah, channel, mode, true);
 		if (ret) {
 			ATH5K_DBG(ah, ATH5K_DEBUG_RESET,

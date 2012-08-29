@@ -1183,6 +1183,8 @@ static int ath5k_hw_rf5112_channel(struct ath5k_hw *ah,
 	data = data0 = data1 = data2 = 0;
 	c = channel->center_freq;
 
+	printk("VANET-DEBUG: %s Writing freq = %u to registers\n", __func__, c);
+
 	if (c < 4800) {
 		if (!((c - 2224) % 5)) {
 			data0 = ((2 * (c - 704)) - 3040) / 10;

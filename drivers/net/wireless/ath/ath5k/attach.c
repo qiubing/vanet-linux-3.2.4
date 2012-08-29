@@ -31,6 +31,11 @@ static int ath5k_modparam_chan_bw;
 module_param_named(chan_bw, ath5k_modparam_chan_bw, int, S_IRUGO);
 MODULE_PARM_DESC(chan_bw, "Channel bandwidth setting 10(default), 20, 5MHz");
 
+static bool ath5k_modparam_only_11a;
+module_param_named(only_11a, ath5k_modparam_only_11a, bool, S_IRUGO);
+MODULE_PARM_DESC(only_11a, "Disable(default) 11b/11g mode even if NIC supports them");
+
+
 /**
  * ath5k_hw_post - Power On Self Test helper function
  *
@@ -329,6 +334,13 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 	}
 
 	if (test_bit(ATH_STAT_2G_DISABLED, ah->status)) {
+		__clear_bit(AR5K_MODE_11B, ah->ah_capabilities.cap_mode);
+		__clear_bit(AR5K_MODE_11G, ah->ah_capabilities.cap_mode);
+	}
+
+	/*Disable 11b/11g mode in order to use 11a by default VANET modified by LiJing*/
+	if (ath5k_modparam_only_11a) {
+		printk("VANET-DEBUF: %s Disabling 11b/11g mode\n", __func__);
 		__clear_bit(AR5K_MODE_11B, ah->ah_capabilities.cap_mode);
 		__clear_bit(AR5K_MODE_11G, ah->ah_capabilities.cap_mode);
 	}
