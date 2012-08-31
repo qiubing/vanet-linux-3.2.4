@@ -117,8 +117,8 @@ struct frag_hdr {
 #define VANET_UNICAST_FORWARD 1
 #define VANET_MRT_FRESH_TIME 3 // HZ.
 			// ATTENSTION: suppose VANET safety messaging interval is 1 sec.
-#define VANET_IF_NAME "ath5k0"
-#define VANET_IF_NAME_STR "ath5k%d" // used in ieee80211_register_hw()
+#define VANET_IF_NAME "a5k0"
+#define VANET_IF_NAME_STR "a5k%d" // used in ieee80211_register_hw()
 #define VN_MC_GRP_1 (0xFF050000)
 #define VN_MC_GRP_2 (0x0)
 #define VN_MC_GRP_3 (0x0)
