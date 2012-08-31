@@ -402,7 +402,7 @@ ath5k_setup_bands(struct ieee80211_hw *hw)
 
 	/* 5GHz band, A mode */
 	if (test_bit(AR5K_MODE_11A, ah->ah_capabilities.cap_mode)) {
-		printk("VANET-DEBUG: %s AR5K_MODE_11G\n", __func__);
+		printk("VANET-DEBUG: %s AR5K_MODE_11A\n", __func__);
 		sband = &ah->sbands[IEEE80211_BAND_5GHZ];
 		sband->band = IEEE80211_BAND_5GHZ;
 		sband->bitrates = &ah->rates[IEEE80211_BAND_5GHZ][0];

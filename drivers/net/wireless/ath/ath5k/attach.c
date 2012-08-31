@@ -340,7 +340,7 @@ int ath5k_hw_init(struct ath5k_hw *ah)
 
 	/*Disable 11b/11g mode in order to use 11a by default VANET modified by LiJing*/
 	if (ath5k_modparam_only_11a) {
-		printk("VANET-DEBUF: %s Disabling 11b/11g mode\n", __func__);
+		printk("VANET-DEBUG: %s Disabling 11b/11g mode\n", __func__);
 		__clear_bit(AR5K_MODE_11B, ah->ah_capabilities.cap_mode);
 		__clear_bit(AR5K_MODE_11G, ah->ah_capabilities.cap_mode);
 	}
