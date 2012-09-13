@@ -599,8 +599,10 @@ ipv6_add_addr(struct inet6_dev *idev, const struct in6_addr *addr, int pfxlen,
 	if (addr_type == IPV6_ADDR_ANY ||
 	    addr_type & IPV6_ADDR_MULTICAST ||
 	    (!(idev->dev->flags & IFF_LOOPBACK) &&
-	     addr_type & IPV6_ADDR_LOOPBACK))
+	     addr_type & IPV6_ADDR_LOOPBACK)) {
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 		return ERR_PTR(-EADDRNOTAVAIL);
+	}
 
 	rcu_read_lock_bh();
 	if (idev->dead) {
@@ -1225,8 +1227,10 @@ try_nextdev:
 	}
 	rcu_read_unlock();
 
-	if (!hiscore->ifa)
+	if (!hiscore->ifa) {
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 		return -EADDRNOTAVAIL;
+	}
 
 	ipv6_addr_copy(saddr, &hiscore->ifa->addr);
 	in6_ifa_put(hiscore->ifa);
@@ -1241,6 +1245,7 @@ int ipv6_get_lladdr(struct net_device *dev, struct in6_addr *addr,
 	int err = -EADDRNOTAVAIL;
 
 	rcu_read_lock();
+	printk("VANET-debug: %s dev->name %s\n", __func__, dev->name);
 	idev = __in6_dev_get(dev);
 	if (idev) {
 		struct inet6_ifaddr *ifp;
@@ -1250,6 +1255,7 @@ int ipv6_get_lladdr(struct net_device *dev, struct in6_addr *addr,
 			if (ifp->scope == IFA_LINK &&
 			    !(ifp->flags & banned_flags)) {
 				ipv6_addr_copy(addr, &ifp->addr);
+				printk("VANET-debug: %s return 0\n", __func__);
 				err = 0;
 				break;
 			}
@@ -1257,6 +1263,9 @@ int ipv6_get_lladdr(struct net_device *dev, struct in6_addr *addr,
 		read_unlock_bh(&idev->lock);
 	}
 	rcu_read_unlock();
+	if (err == -EADDRNOTAVAIL)
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
+
 	return err;
 }
 
@@ -2172,6 +2181,8 @@ int addrconf_set_dstaddr(struct net *net, void __user *arg)
 
 err_exit:
 	rtnl_unlock();
+	if (err == -EADDRNOTAVAIL)
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return err;
 }
 
@@ -2287,6 +2298,7 @@ static int inet6_addr_del(struct net *net, int ifindex, const struct in6_addr *p
 		}
 	}
 	read_unlock_bh(&idev->lock);
+	printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return -EADDRNOTAVAIL;
 }
 
@@ -2532,6 +2544,7 @@ ipv6_inherit_linklocal(struct inet6_dev *idev, struct net_device *link_dev)
 		addrconf_add_linklocal(idev, &lladdr);
 		return 0;
 	}
+	printk("VANET-debug: %s get_lladdr failed\n", __func__);
 	return -1;
 }
 
@@ -3838,7 +3851,8 @@ static int inet6_rtm_getaddr(struct sk_buff *in_skb, struct nlmsghdr* nlh,
 		dev = __dev_get_by_index(net, ifm->ifa_index);
 
 	ifa = ipv6_get_ifaddr(net, addr, dev, 1);
-	if (!ifa) {
+	if (!ifa) {		
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 		err = -EADDRNOTAVAIL;
 		goto errout;
 	}

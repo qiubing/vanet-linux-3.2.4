@@ -2099,9 +2099,12 @@ int ip6_route_get_saddr(struct net *net,
 	int err = 0;
 	if (rt->rt6i_prefsrc.plen)
 		ipv6_addr_copy(saddr, &rt->rt6i_prefsrc.addr);
-	else
+	else {
 		err = ipv6_dev_get_saddr(net, idev ? idev->dev : NULL,
 					 daddr, prefs, saddr);
+		if (err == -EADDRNOTAVAIL)
+			printk("VANET-debug: %s get_lladdr failed\n", __func__);
+	}
 	return err;
 }
 

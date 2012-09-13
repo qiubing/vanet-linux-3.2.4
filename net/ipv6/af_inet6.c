@@ -313,6 +313,7 @@ int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 		    chk_addr_ret != RTN_LOCAL &&
 		    chk_addr_ret != RTN_MULTICAST &&
 		    chk_addr_ret != RTN_BROADCAST) {
+			printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 			err = -EADDRNOTAVAIL;
 			goto out;
 		}
@@ -350,6 +351,7 @@ int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 				if (!inet->transparent &&
 				    !ipv6_chk_addr(net, &addr->sin6_addr,
 						   dev, 0)) {
+					printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 					err = -EADDRNOTAVAIL;
 					goto out_unlock;
 				}

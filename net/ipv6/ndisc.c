@@ -588,8 +588,10 @@ static void ndisc_send_na(struct net_device *dev, struct neighbour *neigh,
 	} else {
 		if (ipv6_dev_get_saddr(dev_net(dev), dev, daddr,
 				       inet6_sk(dev_net(dev)->ipv6.ndisc_sk)->srcprefs,
-				       &tmpaddr))
+				       &tmpaddr)) {
+			printk("VANET-debug: %s get_lladdr failed\n", __func__);
 			return;
+		}
 		src_addr = &tmpaddr;
 	}
 
@@ -636,8 +638,10 @@ void ndisc_send_ns(struct net_device *dev, struct neighbour *neigh,
 
 	if (saddr == NULL) {
 		if (ipv6_get_lladdr(dev, &addr_buf,
-				   (IFA_F_TENTATIVE|IFA_F_OPTIMISTIC)))
+				   (IFA_F_TENTATIVE|IFA_F_OPTIMISTIC))) {
+			printk("VANET-debug: %s get_lladdr failed\n", __func__);
 			return;
+		}
 		saddr = &addr_buf;
 	}
 
@@ -1541,6 +1545,7 @@ void ndisc_send_redirect(struct sk_buff *skb, struct neighbour *neigh,
 		ND_PRINTK2(KERN_WARNING
 			   "ICMPv6 Redirect: no link-local address on %s\n",
 			   dev->name);
+		printk("VANET-debug: %s get_lladdr failed\n", __func__);
 		return;
 	}
 

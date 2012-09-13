@@ -237,6 +237,7 @@ static int ieee80211_do_open(struct net_device *dev, bool coming_up)
 		if (!is_valid_ether_addr(dev->dev_addr)) {
 			if (!local->open_count)
 				drv_stop(local);
+			printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 			return -EADDRNOTAVAIL;
 		}
 	}
@@ -363,8 +364,10 @@ static int ieee80211_open(struct net_device *dev)
 	int err;
 
 	/* fail early if user set an invalid address */
-	if (!is_valid_ether_addr(dev->dev_addr))
+	if (!is_valid_ether_addr(dev->dev_addr)) {
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 		return -EADDRNOTAVAIL;
+	}
 
 	err = ieee80211_check_concurrent_iface(sdata, sdata->vif.type);
 	if (err)

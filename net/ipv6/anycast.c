@@ -139,6 +139,8 @@ error:
 	rcu_read_unlock();
 	if (pac)
 		sock_kfree_s(sk, pac, sizeof(*pac));
+	if (err == -EADDRNOTAVAIL) 
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return err;
 }
 

@@ -282,6 +282,7 @@ unique:
 
 not_unique:
 	spin_unlock(lock);
+	printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return -EADDRNOTAVAIL;
 }
 

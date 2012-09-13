@@ -241,6 +241,7 @@ int ipv6_sock_mc_drop(struct sock *sk, int ifindex, const struct in6_addr *addr)
 	}
 	spin_unlock(&ipv6_sk_mc_lock);
 
+	printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return -EADDRNOTAVAIL;
 }
 
@@ -442,6 +443,8 @@ done:
 	rcu_read_unlock();
 	if (leavegroup)
 		return ipv6_sock_mc_drop(sk, pgsr->gsr_interface, group);
+	if (err == -EADDRNOTAVAIL)
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return err;
 }
 
@@ -604,6 +607,8 @@ int ip6_mc_msfget(struct sock *sk, struct group_filter *gsf,
 done:
 	read_unlock_bh(&idev->lock);
 	rcu_read_unlock();
+	if (err == -EADDRNOTAVAIL)
+		printk("VANET-debug: %s -------EADDRNOTAVAIL\n", __func__);
 	return err;
 }
 
@@ -1364,6 +1369,7 @@ static struct sk_buff *mld_newpack(struct net_device *dev, int size)
 		 * use unspecified address as the source address
 		 * when a valid link-local address is not available.
 		 */
+		printk("VANET-debug: %s get_lladdr failed\n", __func__);
 		saddr = &in6addr_any;
 	} else
 		saddr = &addr_buf;
@@ -1761,6 +1767,7 @@ static void igmp6_send(struct in6_addr *addr, struct net_device *dev, int type)
 		 * use unspecified address as the source address
 		 * when a valid link-local address is not available.
 		 */
+		printk("VANET-debug: %s get_lladdr failed\n", __func__);
 		saddr = &in6addr_any;
 	} else
 		saddr = &addr_buf;
