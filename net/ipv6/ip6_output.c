@@ -83,6 +83,154 @@ int ip6_local_out(struct sk_buff *skb)
 }
 EXPORT_SYMBOL_GPL(ip6_local_out);
 
+#if VANET_UNICAST_FORWARD
+
+int ip6_append_data_vanet(struct sock *sk, void *from, int length,
+		  int transhdrlen, int hlimit, int tclass, struct flowi6 *fl6)
+{
+	struct sk_buff *skb;
+	int hh_len, alloclen;
+	int err;
+	int csummode = CHECKSUM_NONE;
+	__u8 tx_flags = 0;
+	char *data;
+	int datalen = length - transhdrlen;
+
+	if (!skb_queue_empty(&sk->sk_write_queue)) {
+		printk("VANET-debug: %s sk_write_queue is not empty, error\n", __func__);
+		return -EINVAL;
+	}
+
+	hh_len = VANET_LL_RESERVED_SPACE;
+
+	if (sk->sk_type == SOCK_DGRAM) {
+		err = sock_tx_timestamp(sk, &tx_flags);
+		if (err)
+			return err;
+	}
+
+	alloclen = length + sizeof(struct ipv6hdr) + sizeof(struct frag_hdr);
+#if 0
+	printk("VANET-debug: %s sk_buff alloclen is %d, noblock is false\n",
+			__func__, alloclen);
+#endif
+	skb = sock_alloc_send_skb(sk, alloclen + hh_len, 0, &err);
+	if (skb == NULL)
+		return err;
+	skb->ip_summed = csummode;
+	skb->csum = 0;
+	skb_reserve(skb, hh_len + sizeof(struct frag_hdr));
+
+	if (sk->sk_type == SOCK_DGRAM)
+		skb_shinfo(skb)->tx_flags = tx_flags;
+
+	data = skb_put(skb, length + sizeof(struct ipv6hdr));
+	skb_set_network_header(skb, 0);
+	data += sizeof(struct ipv6hdr);
+	skb->transport_header = skb->network_header + sizeof(struct ipv6hdr);
+
+	if (ip_generic_getfrag(from, data+transhdrlen, 0, datalen, 0, skb) < 0) {
+		kfree_skb(skb);
+		return -EFAULT;
+	}
+	__skb_queue_tail(&sk->sk_write_queue, skb);
+
+	return 0;
+}
+
+int ip6_local_out_vanet(struct sk_buff *skb)
+{
+	int len;
+	struct ipv6hdr *ipv6h;
+	int err;
+#if 0
+	int i;
+#endif
+
+	ipv6h = ipv6_hdr(skb);
+	len = skb->len - sizeof(struct ipv6hdr);
+	ipv6h->payload_len = htons(len);
+
+	skb->protocol = htons(ETH_P_IPV6);
+
+	/*
+	 * VANET: XXX unicast packet get hardware header (MAC header)
+	 */
+	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
+	skb_push(skb, ETH_HLEN);
+	err = vanet_uc_find_path(&ipv6h->daddr, skb->data);
+#if 0 // uc local out debug
+	printk("VANET-debug: %s dst addr <", __func__);
+	for (i=0; i<sizeof(struct in6_addr) - 1; i++)
+		printk("%2x:", ipv6h->daddr.s6_addr[i]);
+	printk("%2x>\n", ipv6h->daddr.s6_addr[i]);
+	printk("VANET-debug: %s src addr <", __func__);
+	for (i=0; i<sizeof(struct in6_addr) - 1; i++)
+		printk("%2x:", ipv6h->saddr.s6_addr[i]);
+	printk("%2x>\n", ipv6h->saddr.s6_addr[i]);
+	printk("VANET-debug: %s dst maddr <", __func__);
+	for (i=0; i<ETH_ALEN; i++)
+		printk("%2x ", skb->data[i]);
+	printk(">\n");
+	printk("VANET-debug: %s src maddr <", __func__);
+	for (i=0; i<ETH_ALEN; i++)
+		printk("%2x ", skb->data[i+ETH_ALEN]);
+	printk(">\n");
+#endif
+	if (err == 0)
+		return dev_queue_xmit(skb);
+	else {
+		kfree_skb(skb);
+		return 0;
+	}
+}
+
+int ip6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6, int hl, int tc)
+{
+	struct sk_buff *skb;
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	struct net *net = sock_net(sk);
+	struct ipv6hdr *hdr;
+	struct net_device *ndev;
+	unsigned char proto = fl6->flowi6_proto;
+	int err = 0;
+
+	if ((skb = __skb_dequeue(&sk->sk_write_queue)) == NULL)
+		return err;
+
+	if (np->pmtudisc < IPV6_PMTUDISC_DO)
+		skb->local_df = 1;
+
+	hdr = ipv6_hdr(skb);
+	*(__be32 *)hdr = fl6->flowlabel | htonl(0x60000000 | ((int)tc << 20));
+	hdr->hop_limit = hl & 0xff;
+	hdr->nexthdr = proto;
+	ipv6_addr_copy(&hdr->saddr, &fl6->saddr);
+	ipv6_addr_copy(&hdr->daddr, &fl6->daddr);
+
+	ndev = dev_get_by_index(net, fl6->flowi6_oif);
+	if (ndev) {
+		skb->dev = ndev;
+	} else {
+		printk("VANET-error: %s DO NOT find output device(%d)\n",
+				__func__, fl6->flowi6_oif);
+		kfree_skb(skb);
+		return err;
+	}
+
+	skb->priority = sk->sk_priority;
+	skb->mark = sk->sk_mark;
+
+	err = ip6_local_out_vanet(skb);
+	dev_put(ndev);
+	if (err > 0)
+		err = net_xmit_errno(err);
+
+	return err;
+}
+
+#endif
+
 /* dev_loopback_xmit for use with netfilter. */
 static int ip6_dev_loopback_xmit(struct sk_buff *newskb)
 {

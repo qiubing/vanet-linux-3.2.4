@@ -108,6 +108,9 @@ static int inet6_create(struct net *net, struct socket *sock, int protocol,
 	char answer_no_check;
 	int try_loading_module = 0;
 	int err;
+#if VANET_UNICAST_FORWARD
+	struct net_device *ndev;
+#endif
 
 	if (sock->type != SOCK_RAW &&
 	    sock->type != SOCK_DGRAM &&
@@ -204,6 +207,17 @@ lookup_protocol:
 	np->mc_loop	= 1;
 	np->pmtudisc	= IPV6_PMTUDISC_WANT;
 	np->ipv6only	= net->ipv6.sysctl.bindv6only;
+
+#if VANET_UNICAST_FORWARD
+	ndev = dev_get_by_name(sk->sk_net, VANET_IF_NAME);
+	if (ndev) { // VANET: Have vanet interface, DO vanet-spec socket initial.
+		printk("VANET-debug: %s using vanet-spec socket config\n", __func__);
+		sk->sk_bound_dev_if = ndev->ifindex;
+		ipv6_addr_copy(&np->saddr, &vanet_self_lladdr);
+		np->hop_limit = VANET_UC_HL_DEFAULT;
+		dev_put(ndev);
+	}
+#endif
 
 	/* Init the ipv4 part of the socket since we can have sockets
 	 * using v6 API for ipv4.

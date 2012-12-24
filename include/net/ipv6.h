@@ -117,8 +117,11 @@ struct frag_hdr {
 #define VANET_UNICAST_FORWARD 1
 #define VANET_MRT_FRESH_TIME 3 // HZ.
 			// ATTENSTION: suppose VANET safety messaging interval is 1 sec.
-#define VANET_IF_NAME "a5k0"
+#define VANET_IF_NAME "a5k0" // used in vanet-spec socket initial.
 #define VANET_IF_NAME_STR "a5k%d" // used in ieee80211_register_hw()
+#define VANET_DATALEN_MAX 1400 // maximum data length, WLAN-MTU correlate.
+#define VANET_UC_HL_DEFAULT 3 // vanet unicast packet default hop limit.
+#define VANET_LL_RESERVED_SPACE 16 // see more in LL_RESERVED_SPACE.
 #define VN_MC_GRP_1 (0xFF050000)
 #define VN_MC_GRP_2 (0x0)
 #define VN_MC_GRP_3 (0x0)
@@ -564,6 +567,19 @@ extern int			ip6_append_data(struct sock *sk,
 						struct rt6_info *rt,
 						unsigned int flags,
 						int dontfrag);
+
+#if VANET_UNICAST_FORWARD
+extern int			ip6_append_data_vanet(struct sock *sk, void *from, int length,
+							int transhdrlen,
+							int hlimit,
+							int tclass,
+							struct flowi6 *fl6);
+
+extern int			ip6_local_out_vanet(struct sk_buff *skb);
+
+extern int			ip6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6,
+								int hl, int tc);
+#endif
 
 extern int			ip6_push_pending_frames(struct sock *sk);
 

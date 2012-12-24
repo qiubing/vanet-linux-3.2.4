@@ -72,8 +72,8 @@ int ip6_uc_forward_vanet(struct sk_buff *skb, struct net_device *dev)
 		printk("VANET-debug: %s hop_limit less than 1, DROP\n", __func__);
 		goto out_free;
 	}
-	if (skb->len > 1400) {
-		printk("VANET-debug: %s MTU(1400) exceed, DROP\n", __func__);
+	if (skb->len > VANET_DATALEN_MAX) {
+		printk("VANET-debug: %s MTU(%d) exceed, DROP\n", __func__, VANET_DATALEN_MAX);
 		goto out_free;
 	}
 	if (skb_cow(skb, sizeof(*ipv6h) + LL_RESERVED_SPACE(skb->dev))) {
@@ -109,6 +109,9 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 	u32 		pkt_len;
 	struct inet6_dev *idev;
 	struct net *net = dev_net(skb->dev);
+#if VANET_UNICAST_FORWARD
+	static int addrtype;
+#endif
 #if 0 //debug information for PowerPC
 	int i;
 #endif
@@ -213,8 +216,10 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 	skb_orphan(skb);
 
 #if VANET_UNICAST_FORWARD
+	addrtype = ipv6_addr_type(&hdr->daddr);
 	if (!ipv6_addr_equal(&vanet_self_lladdr, &hdr->daddr) &&
-			(ipv6_addr_type(&hdr->daddr) & IPV6_ADDR_LINKLOCAL)) {
+			(addrtype & IPV6_ADDR_LINKLOCAL) &&
+			!(addrtype & IPV6_ADDR_MULTICAST)) { //VANET: XXX FF02:xxx is LINKLOCAL
 		return ip6_uc_forward_vanet(skb, dev);
 	}
 #endif
@@ -725,8 +730,8 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 	ipv6h->hop_limit--;
 	IP6CB(skb)->flags |= IP6SKB_FORWARDED;
 
-	if (skb->len > 1400) {
-		printk("VANET-debug: %s MTU(1400) exceed, DROP\n", __func__);
+	if (skb->len > VANET_DATALEN_MAX) {
+		printk("VANET-debug: %s MTU(%d) exceed, DROP\n", __func__, VANET_DATALEN_MAX);
 		goto out_free;
 	}
 

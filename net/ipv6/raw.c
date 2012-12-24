@@ -246,6 +246,8 @@ static int rawv6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 	int addr_type;
 	int err;
 
+	printk("VANET-debug: %s\n", __func__);
+
 	if (addr_len < SIN6_LEN_RFC2133)
 		return -EINVAL;
 	addr_type = ipv6_addr_type(&addr->sin6_addr);
@@ -722,6 +724,193 @@ static int rawv6_probe_proto_opt(struct flowi6 *fl6, struct msghdr *msg)
 	return 0;
 }
 
+#if VANET_UNICAST_FORWARD
+
+static int rawv6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6,
+					     struct raw6_sock *rp, int hl, int tc, int total_len)
+{
+	struct sk_buff *skb;
+	int err = 0;
+	int offset;
+	__wsum tmp_csum;
+	__sum16 csum;
+
+	if (!rp->checksum) {
+		printk("VANET-debug: %s do not perform checksum\n", __func__);
+		goto send;
+	}
+
+	if ((skb = skb_peek(&sk->sk_write_queue)) == NULL)
+		goto out;
+
+	offset = rp->offset;
+	if (offset >= total_len - 1) {
+		err = -EINVAL;
+		ip6_flush_pending_frames(sk);
+		goto out;
+	}
+
+	if (skb_queue_len(&sk->sk_write_queue) == 1) {
+		tmp_csum = skb->csum;
+	} else {
+		printk("VANET-error: %s has multi fragment, flushing\n", __func__);
+		err = -EOPNOTSUPP;
+		ip6_flush_pending_frames(sk);
+		goto out;
+	}
+
+	offset += skb_transport_offset(skb);
+	if (skb_copy_bits(skb, offset, &csum, 2)) {
+		printk("VANET-debug: %s error\n", __func__);
+		BUG();
+	}
+
+	if (unlikely(csum))
+		tmp_csum = csum_sub(tmp_csum, csum_unfold(csum));
+
+	csum = csum_ipv6_magic(&fl6->saddr, &fl6->daddr,
+				total_len, fl6->flowi6_proto, tmp_csum);
+
+	if (csum == 0 && fl6->flowi6_proto == IPPROTO_UDP)
+		csum = CSUM_MANGLED_0;
+
+	if (skb_store_bits(skb, offset, &csum, 2))
+		BUG();
+
+send:
+	err = ip6_push_pending_frames_vanet(sk, fl6, hl, tc);
+out:
+	return err;
+}
+
+static int rawv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
+{
+	struct sockaddr_in6 * sin6 = (struct sockaddr_in6 *) msg->msg_name;
+	struct in6_addr *daddr;
+	struct inet_sock *inet = inet_sk(sk);
+	struct ipv6_pinfo *np = inet6_sk(sk);
+	struct raw6_sock *rp = raw6_sk(sk);
+	struct flowi6 fl6;
+	int addr_len = msg->msg_namelen;
+	int hlimit = -1;
+	int tclass = -1;
+	u16 proto;
+	int err = 0;
+
+	if (len > VANET_DATALEN_MAX) {
+		printk("VANET-error: %s data length exceed vanet maximum datalen %d\n",
+				__func__, VANET_DATALEN_MAX);
+		return -EPERM;
+	}
+
+	if (msg->msg_flags & MSG_OOB)
+		return -EOPNOTSUPP;
+	if (msg->msg_flags & MSG_CONFIRM)
+		return -EOPNOTSUPP;
+	if (msg->msg_flags & MSG_MORE)
+		return -EOPNOTSUPP;
+	if (inet->hdrincl) {
+		printk("VANET-error: %s IPv6 header include not support\n", __func__);
+		return -EOPNOTSUPP;
+	}
+
+	// VANET: fill up fl6.
+	memset(&fl6, 0, sizeof(fl6));
+	fl6.flowi6_mark = sk->sk_mark;
+	if (sin6) {
+		if (addr_len < SIN6_LEN_RFC2133)
+			return -EINVAL;
+
+		if (sin6->sin6_family && sin6->sin6_family != AF_INET6)
+			return -EAFNOSUPPORT;
+
+		proto = ntohs(sin6->sin6_port);
+
+		if (!proto)
+			proto = inet->inet_num;
+		else if (proto != inet->inet_num)
+			return -EINVAL;
+
+		daddr = &sin6->sin6_addr;
+
+		if (addr_len >= sizeof(struct sockaddr_in6) &&
+		    sin6->sin6_scope_id &&
+		    ipv6_addr_type(daddr)&IPV6_ADDR_LINKLOCAL)
+			fl6.flowi6_oif = sin6->sin6_scope_id;
+	} else {
+		printk("VANET-error: %s have no msg_name, do not support CONNECT\n",
+				__func__);
+		return -EOPNOTSUPP;
+	}
+
+	if (fl6.flowi6_oif == 0)
+		fl6.flowi6_oif = sk->sk_bound_dev_if;
+
+	if (fl6.flowi6_oif == 0)
+		printk("VANET-error: %s oif = 0\n", __func__);
+
+	if (msg->msg_controllen) {
+		printk("VANET-error: %s do not support msg_control\n", __func__);
+		return -EOPNOTSUPP;
+	}
+
+	fl6.flowi6_proto = proto;
+	err = rawv6_probe_proto_opt(&fl6, msg);
+	if (err) {
+		printk("VANET-debug: %s rawv6_probe_proto_opt failed\n", __func__);
+		goto out;
+	}
+
+	if (!ipv6_addr_any(daddr))
+		ipv6_addr_copy(&fl6.daddr, daddr);
+	else
+		fl6.daddr.s6_addr[15] = 0x1; /* loopback address ::1 */
+	if (ipv6_addr_any(&fl6.saddr)) {
+		if (!ipv6_addr_any(&np->saddr)) {
+			ipv6_addr_copy(&fl6.saddr, &np->saddr);
+		} else {
+			printk("VANET-debug: %s saddr is ADDR_ANY, set vanet_sefl_lladdr\n",
+					__func__);
+			ipv6_addr_copy(&fl6.saddr, &vanet_self_lladdr);
+		}
+	}
+
+	if (!fl6.flowi6_oif && ipv6_addr_is_multicast(&fl6.daddr))
+		fl6.flowi6_oif = np->mcast_oif;
+
+	if (hlimit < 0) {
+		if (ipv6_addr_is_multicast(&fl6.daddr))
+			hlimit = np->mcast_hops;
+		else
+			hlimit = np->hop_limit;
+		if (hlimit < 0) {
+			printk("VANET-debug: %s np's hop_limit invalid, set %d\n",
+					__func__, VANET_UC_HL_DEFAULT);
+			hlimit = VANET_UC_HL_DEFAULT;
+		}
+	}
+
+	if (tclass < 0)
+		tclass = np->tclass;
+
+	lock_sock(sk);
+	err = ip6_append_data_vanet(sk, msg->msg_iov, len, 0, hlimit, tclass, &fl6);
+	if (err) {
+		struct sk_buff *skb;
+		printk("VANET-debug: %s flush pending frames\n", __func__);
+		while ((skb = __skb_dequeue_tail(&sk->sk_write_queue)) != NULL)
+			kfree_skb(skb);
+	} else {
+		err = rawv6_push_pending_frames_vanet(sk, &fl6, rp, hlimit, tclass, len);
+	}
+	release_sock(sk);
+
+out:
+	return err < 0 ? err : len;
+}
+
+#endif
+
 static int rawv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		   struct msghdr *msg, size_t len)
 {
@@ -741,6 +930,14 @@ static int rawv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int dontfrag = -1;
 	u16 proto;
 	int err;
+
+#if VANET_UNICAST_FORWARD
+	printk("VANET-debug: %s through vanet process, data length[%u]\n",
+			__func__, len);
+	err = rawv6_sendmsg_vanet(sk, msg, len);
+	/* VANET TODO: err control and return */
+	return err;
+#endif
 
 	/* Rough check on arithmetic overflow,
 	   better check is made in ip6_append_data().
@@ -1072,6 +1269,8 @@ static int do_rawv6_getsockopt(struct sock *sk, int level, int optname,
 static int rawv6_getsockopt(struct sock *sk, int level, int optname,
 			  char __user *optval, int __user *optlen)
 {
+	printk("VANET-debug: %s\n", __func__);
+
 	switch (level) {
 	case SOL_RAW:
 		break;
@@ -1114,6 +1313,8 @@ static int compat_rawv6_getsockopt(struct sock *sk, int level, int optname,
 
 static int rawv6_ioctl(struct sock *sk, int cmd, unsigned long arg)
 {
+	printk("VANET-debug: %s\n", __func__);
+
 	switch (cmd) {
 	case SIOCOUTQ: {
 		int amount = sk_wmem_alloc_get(sk);

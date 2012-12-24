@@ -51,6 +51,8 @@ int ip6_datagram_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 	int			addr_type;
 	int			err;
 
+	printk("VANET-debug: %s\n", __func__);
+
 	if (usin->sin6_family == AF_INET) {
 		if (__ipv6_only_sock(sk))
 			return -EAFNOSUPPORT;
