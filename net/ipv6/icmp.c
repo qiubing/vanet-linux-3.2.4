@@ -251,7 +251,6 @@ static int icmpv6_push_pending_frames(struct sock *sk, struct flowi6 *fl6, struc
 						      len, fl6->flowi6_proto,
 						      tmp_csum);
 	}
-	printk("VANET-debug: %s send ECHO REPLY\n", __func__);
 	ip6_push_pending_frames(sk);
 out:
 	return err;
@@ -699,7 +698,6 @@ static int icmpv6_rcv(struct sk_buff *skb)
 
 	switch (type) {
 	case ICMPV6_ECHO_REQUEST:
-		printk("VANET-debug: %s receive ECHO_REQUEST\n", __func__);
 		icmpv6_echo_reply(skb);
 		break;
 
