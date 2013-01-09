@@ -10,6 +10,7 @@ country 00:
         # NB: 5260 MHz - 5700 MHz requies DFS
         # Channel 149 - 165
         (5735 - 5835 @ 40), (3, 20), PASSIVE-SCAN, NO-IBSS
+	(5850 - 5930 @ 20), (N/A, 30)
 
 
 country AE:
@@ -663,6 +664,7 @@ country US: DFS-FCC
 	(5490 - 5600 @ 40), (3, 20), DFS
 	(5650 - 5710 @ 40), (3, 20), DFS
 	(5735 - 5835 @ 40), (3, 30)
+	(5850 - 5930 @ 20), (N/A, 30)
 
 country UY:
 	(2402 - 2482 @ 40), (N/A, 20)

@@ -803,12 +803,18 @@ static int rawv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 		return -EPERM;
 	}
 
-	if (msg->msg_flags & MSG_OOB)
+	if (msg->msg_flags & MSG_OOB) {
+		printk("VANET-error: %s MSG_OOB not support\n", __func__);
 		return -EOPNOTSUPP;
-	if (msg->msg_flags & MSG_CONFIRM)
+	}
+	if (msg->msg_flags & MSG_CONFIRM) {
+		printk("VANET-error: %s MSG_CONFIRM not support\n", __func__);
 		return -EOPNOTSUPP;
-	if (msg->msg_flags & MSG_MORE)
+	}
+	if (msg->msg_flags & MSG_MORE) {
+		printk("VANET-error: %s MSG_MORE not support\n", __func__);
 		return -EOPNOTSUPP;
+	}
 	if (inet->hdrincl) {
 		printk("VANET-error: %s IPv6 header include not support\n", __func__);
 		return -EOPNOTSUPP;
@@ -932,8 +938,8 @@ static int rawv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	int err;
 
 #if VANET_UNICAST_FORWARD
-	printk("VANET-debug: %s through vanet process, data length[%u]\n",
-			__func__, len);
+//	printk("VANET-debug: %s through vanet process, data length[%u]\n",
+//			__func__, len);
 	err = rawv6_sendmsg_vanet(sk, msg, len);
 	/* VANET TODO: err control and return */
 	return err;

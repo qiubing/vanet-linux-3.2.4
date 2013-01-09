@@ -476,7 +476,7 @@ int vanet_uc_find_path(struct in6_addr *dest, void *path)
 	if (vnp != NULL) {
 		memcpy(path, vnp->mrt_via, ETH_ALEN);
 		spin_unlock_bh(&htep->lock);
-		printk("VANET-debug: %s find next hop\n", __func__);
+//		printk("VANET-debug: %s find next hop\n", __func__);
 		return 0;
 	} else {
 		spin_unlock_bh(&htep->lock);
