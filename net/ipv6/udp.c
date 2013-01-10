@@ -1154,8 +1154,9 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 		printk("VANET-debug: %s BUG, up->len is not 0\n", __func__);
 		return -EINVAL;
 	}
-	err = ip6_append_data_vanet(sk, msg->msg_iov, ulen, sizeof(struct udphdr),
-					hlimit, tclass, &fl6);
+	err = ip6_append_data_vanet(sk, ip_generic_getfrag, msg->msg_iov,
+				ulen, sizeof(struct udphdr), hlimit, tclass, &fl6,
+				msg->msg_flags);
 	if (err) {
 		struct sk_buff *skb;
 		printk("VANET-debug: %s udpv6 flush pending frames\n", __func__);

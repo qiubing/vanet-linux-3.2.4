@@ -85,8 +85,10 @@ EXPORT_SYMBOL_GPL(ip6_local_out);
 
 #if VANET_UNICAST_FORWARD
 
-int ip6_append_data_vanet(struct sock *sk, void *from, int length,
-		  int transhdrlen, int hlimit, int tclass, struct flowi6 *fl6)
+int ip6_append_data_vanet(struct sock *sk, int getfrag(void *from, char *to,
+		int offset, int len, int odd, struct sk_buff *skb),
+		void *from, int length, int transhdrlen, int hlimit,
+		int tclass, struct flowi6 *fl6, unsigned int flags)
 {
 	struct sk_buff *skb;
 	int hh_len, alloclen;
@@ -95,6 +97,9 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 	__u8 tx_flags = 0;
 	char *data;
 	int datalen = length - transhdrlen;
+
+	if (flags & MSG_PROBE)
+		printk("VANET-warning: %s MSG_PROBE not supported\n", __func__);
 
 	if (!skb_queue_empty(&sk->sk_write_queue)) {
 		printk("VANET-debug: %s sk_write_queue is not empty, error\n", __func__);
@@ -114,7 +119,7 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 	printk("VANET-debug: %s sk_buff alloclen is %d, noblock is false\n",
 			__func__, alloclen);
 #endif
-	skb = sock_alloc_send_skb(sk, alloclen + hh_len, 0, &err);
+	skb = sock_alloc_send_skb(sk, alloclen + hh_len, (flags & MSG_DONTWAIT), &err);
 	if (skb == NULL)
 		return err;
 	skb->ip_summed = csummode;
@@ -129,7 +134,7 @@ int ip6_append_data_vanet(struct sock *sk, void *from, int length,
 	data += sizeof(struct ipv6hdr);
 	skb->transport_header = skb->network_header + sizeof(struct ipv6hdr);
 
-	if (ip_generic_getfrag(from, data+transhdrlen, 0, datalen, 0, skb) < 0) {
+	if (getfrag(from, data+transhdrlen, 0, datalen, 0, skb) < 0) {
 		kfree_skb(skb);
 		return -EFAULT;
 	}

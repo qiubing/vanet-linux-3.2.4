@@ -900,7 +900,8 @@ static int rawv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 		tclass = np->tclass;
 
 	lock_sock(sk);
-	err = ip6_append_data_vanet(sk, msg->msg_iov, len, 0, hlimit, tclass, &fl6);
+	err = ip6_append_data_vanet(sk, ip_generic_getfrag, msg->msg_iov,
+					len, 0, hlimit, tclass, &fl6, msg->msg_flags);
 	if (err) {
 		struct sk_buff *skb;
 		printk("VANET-debug: %s flush pending frames\n", __func__);

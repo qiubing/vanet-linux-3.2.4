@@ -513,6 +513,112 @@ out:
 }
 EXPORT_SYMBOL(icmpv6_send);
 
+#if VANET_UNICAST_FORWARD
+static int icmpv6_push_pending_frames_vanet(struct sock *sk, struct flowi6 *fl6,
+		struct icmp6hdr *thdr, int len, int hl, int tc)
+{
+	struct sk_buff *skb;
+	struct icmp6hdr *icmp6h;
+	int err = 0;
+
+	if ((skb = skb_peek(&sk->sk_write_queue)) == NULL)
+		goto out;
+
+	icmp6h = icmp6_hdr(skb);
+	memcpy(icmp6h, thdr, sizeof(struct icmp6hdr));
+	icmp6h->icmp6_cksum = 0;
+
+	if (skb_queue_len(&sk->sk_write_queue) == 1) {
+		skb->csum = csum_partial(icmp6h,
+					sizeof(struct icmp6hdr), skb->csum);
+		icmp6h->icmp6_cksum = csum_ipv6_magic(&fl6->saddr,
+						      &fl6->daddr,
+						      len, fl6->flowi6_proto,
+						      skb->csum);
+	} else {
+		struct sk_buff *skb;
+		err = -EOPNOTSUPP;
+
+		printk("VANET-error: %s has multi fragment, flushing\n", __func__);
+		while ((skb = __skb_dequeue_tail(&sk->sk_write_queue)) != NULL)
+			kfree_skb(skb);
+		goto out;
+	}
+
+	ip6_push_pending_frames_vanet(sk, fl6, hl, tc);
+
+out:
+	return err;
+}
+
+static void icmpv6_echo_reply_vanet(struct sk_buff *skb)
+{
+	struct net *net = dev_net(skb->dev);
+	struct sock *sk;
+	struct ipv6_pinfo *np;
+	const struct in6_addr *saddr = NULL;
+	struct icmp6hdr *icmph = icmp6_hdr(skb);
+	struct icmp6hdr tmp_hdr;
+	struct flowi6 fl6;
+	struct icmpv6_msg msg;
+	int err = 0;
+	int hlimit;
+
+	saddr = &ipv6_hdr(skb)->daddr;
+
+	memcpy(&tmp_hdr, icmph, sizeof(tmp_hdr));
+	tmp_hdr.icmp6_type = ICMPV6_ECHO_REPLY;
+
+	memset(&fl6, 0, sizeof(fl6));
+	fl6.flowi6_proto = IPPROTO_ICMPV6;
+	ipv6_addr_copy(&fl6.daddr, &ipv6_hdr(skb)->saddr);
+	if (saddr)
+		ipv6_addr_copy(&fl6.saddr, saddr);
+	fl6.flowi6_oif = skb->dev->ifindex;
+	if (!fl6.flowi6_oif)
+		printk("VANET-debug: %s oif = 0\n", __func__);
+	fl6.fl6_icmp_type = ICMPV6_ECHO_REPLY;
+
+	sk = icmpv6_xmit_lock(net);
+	if (sk == NULL)
+		return;
+	np = inet6_sk(sk);
+
+	if (!fl6.flowi6_oif && ipv6_addr_is_multicast(&fl6.daddr))
+		fl6.flowi6_oif = np->mcast_oif;
+
+	if (ipv6_addr_is_multicast(&fl6.daddr))
+		hlimit = np->mcast_hops;
+	else
+		hlimit = np->hop_limit;
+	/* VANET: set echo reply's hop-limit to vanet-spec value. */
+	if (hlimit < 0 || hlimit > 10) { // 10 hop is too far...
+		hlimit = VANET_UC_HL_DEFAULT;
+	}
+
+	msg.skb = skb;
+	msg.offset = 0;
+	msg.type = ICMPV6_ECHO_REPLY;
+
+	err = ip6_append_data_vanet(sk, icmpv6_getfrag, &msg,
+			skb->len + sizeof(struct icmp6hdr),
+			sizeof(struct icmp6hdr), hlimit, np->tclass, &fl6,
+			MSG_DONTWAIT);
+	if (err) {
+		struct sk_buff *skb;
+		printk("VANET-debug: %s flush pending frames\n", __func__);
+		while ((skb = __skb_dequeue_tail(&sk->sk_write_queue)) != NULL)
+			kfree_skb(skb);
+	} else {
+		err = icmpv6_push_pending_frames_vanet(sk, &fl6, &tmp_hdr,
+				skb->len + sizeof(struct icmp6hdr), hlimit,
+				np->tclass);
+	}
+
+	icmpv6_xmit_unlock(sk);
+}
+#endif
+
 static void icmpv6_echo_reply(struct sk_buff *skb)
 {
 	struct net *net = dev_net(skb->dev);
@@ -698,7 +804,11 @@ static int icmpv6_rcv(struct sk_buff *skb)
 
 	switch (type) {
 	case ICMPV6_ECHO_REQUEST:
+#if VANET_UNICAST_FORWARD
+		icmpv6_echo_reply_vanet(skb);
+#else
 		icmpv6_echo_reply(skb);
+#endif
 		break;
 
 	case ICMPV6_ECHO_REPLY:

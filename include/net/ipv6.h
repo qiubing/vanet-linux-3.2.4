@@ -569,11 +569,15 @@ extern int			ip6_append_data(struct sock *sk,
 						int dontfrag);
 
 #if VANET_UNICAST_FORWARD
-extern int			ip6_append_data_vanet(struct sock *sk, void *from, int length,
-							int transhdrlen,
-							int hlimit,
-							int tclass,
-							struct flowi6 *fl6);
+extern int			ip6_append_data_vanet(struct sock *sk,
+						int getfrag(void *from, char *to, int offset, int len, int odd, struct sk_buff *skb),
+						void *from,
+						int length,
+						int transhdrlen,
+						int hlimit,
+						int tclass,
+						struct flowi6 *fl6,
+						unsigned int flags);
 
 extern int			ip6_local_out_vanet(struct sk_buff *skb);
 
