@@ -1204,8 +1204,6 @@ int udpv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 
 	if (msg->msg_flags & MSG_VANET) {
 #if VANET_UNICAST_FORWARD
-		printk("VANET-debug: %s through vanet process, data length[%u]\n",
-				__func__, len);
 		err = udpv6_sendmsg_vanet(sk, msg, len);
 		return err;
 		/* VANET TODO: err control and return*/
