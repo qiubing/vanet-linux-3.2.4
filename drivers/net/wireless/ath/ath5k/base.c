@@ -1316,6 +1316,7 @@ ath5k_receive_frame(struct ath5k_hw *ah, struct sk_buff *skb,
 		    struct ath5k_rx_status *rs)
 {
 	struct ieee80211_rx_status *rxs;
+	struct ieee80211_mgmt *mgmt;
 #if 0 // debug information for PowerPC
 	int i, j;
 #endif
@@ -1404,7 +1405,15 @@ ath5k_receive_frame(struct ath5k_hw *ah, struct sk_buff *skb,
 	if (ah->opmode == NL80211_IFTYPE_ADHOC)
 		ath5k_check_ibss_tsf(ah, skb, rxs);
 
-	ieee80211_rx(ah->hw, skb);
+	/**
+	 * VANET-debug: XXX ath5k drop all received management frame
+	 */
+	mgmt = (struct ieee80211_mgmt *)skb->data;
+	if (!ieee80211_is_data(mgmt->frame_control)) {
+		kfree_skb(skb);
+	} else {
+		ieee80211_rx(ah->hw, skb);
+	}
 }
 
 /** ath5k_frame_receive_ok() - Do we want to receive this frame or not?

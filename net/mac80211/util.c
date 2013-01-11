@@ -693,13 +693,9 @@ u32 ieee80211_mandatory_rates(struct ieee80211_local *local,
 	/**
 	 * VANET-debug: XXX at init time mandatory rates is 0x15 (6M, 12M, 24M),
 	 * since vanet has no management frame which contain support_rates information,
-	 * here we just let mandatory_rates to be 0xff and corresponding to support all
-	 * 11a rates.
-	 * TODO rate control at very begaining time.
+	 * we just let mandatory_rates to be 0xff when calling it if and only if the
+	 * vif type is ADHOC. Then supporting all 11a rates.
 	 */
-	mandatory_rates = 0xff;
-	printk("VANET-debug: %s set mandatory_rates to 0xff, which support all rates\n",
-			__func__);
 
 	return mandatory_rates;
 }

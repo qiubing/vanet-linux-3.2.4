@@ -292,8 +292,12 @@ static void ieee80211_rx_bss_info(struct ieee80211_sub_if_data *sdata,
 
 				prev_rates = sta->sta.supp_rates[band];
 				/* make sure mandatory rates are always added */
-				sta->sta.supp_rates[band] = supp_rates |
-					ieee80211_mandatory_rates(local, band);
+//				sta->sta.supp_rates[band] = supp_rates |
+//					ieee80211_mandatory_rates(local, band);
+				/* VANET: XXX */
+				sta->sta.supp_rates[band] = supp_rates | 0xff;
+				printk("VANET-debug: %s mandatory_rates is 0xff, support all rates\n",
+					       __func__);
 
 				if (sta->sta.supp_rates[band] != prev_rates) {
 #ifdef CONFIG_MAC80211_IBSS_DEBUG
@@ -465,8 +469,11 @@ struct sta_info *ieee80211_ibss_add_sta(struct ieee80211_sub_if_data *sdata,
 	set_sta_flag(sta, WLAN_STA_AUTHORIZED);
 
 	/* make sure mandatory rates are always added */
-	sta->sta.supp_rates[band] = supp_rates |
-			ieee80211_mandatory_rates(local, band);
+//	sta->sta.supp_rates[band] = supp_rates |
+//			ieee80211_mandatory_rates(local, band);
+	/* VANET: XXX */
+	sta->sta.supp_rates[band] = supp_rates | 0xff;
+	printk("VANET-debug: %s mandatory_rates is 0xff, support all rates\n", __func__);
 
 	rate_control_rate_init(sta);
 

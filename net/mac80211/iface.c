@@ -1002,6 +1002,12 @@ int ieee80211_if_change_type(struct ieee80211_sub_if_data *sdata,
 	sdata->vif.bss_conf.basic_rates =
 		ieee80211_mandatory_rates(sdata->local,
 			sdata->local->hw.conf.channel->band);
+	/* VANET: XXX */
+	if (type == NL80211_IFTYPE_ADHOC) {
+		sdata->vif.bss_conf.basic_rates = 0xff;
+		printk("VANET-debug: %s type is adhoc, mandatory_rates set to 0xff\n", __func__);
+	}
+
 	sdata->drop_unencrypted = 0;
 	if (type == NL80211_IFTYPE_STATION)
 		sdata->u.mgd.use_4addr = false;
