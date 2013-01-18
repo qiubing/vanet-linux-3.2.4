@@ -72,10 +72,16 @@ int ip6_uc_forward_vanet(struct sk_buff *skb, struct net_device *dev)
 		printk("VANET-debug: %s hop_limit less than 1, DROP\n", __func__);
 		goto out_free;
 	}
+	// TODO FIXME: since skb->len contains IPv6 header's length, can not compare with
+	// VANET_DATALEN_MAX directly.
 	if (skb->len > VANET_DATALEN_MAX) {
 		printk("VANET-debug: %s MTU(%d) exceed, DROP\n", __func__, VANET_DATALEN_MAX);
 		goto out_free;
 	}
+	/**
+	 * VANET: TODO XXX make sure skb's headroom is big enough, and do not need reallocating
+	 * frequently to improve performance.
+	 */
 	if (skb_cow(skb, sizeof(*ipv6h) + LL_RESERVED_SPACE(skb->dev))) {
 		printk("VANET-debug: %s skb_cow failed, need to DROP\n", __func__);
 		goto out_free;
@@ -720,6 +726,8 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 	/*
 	 * VANET: XXX after skb_cow, skb's header is changed, any pointing value
 	 * point to skb's header SHOULD be revalued.
+	 * 	  TODO XXX make sure skb's headroom is big enough, and avoiding
+	 * reallocating frequently.
 	 */
 	if (skb_cow(skb, sizeof(*ipv6h)+LL_RESERVED_SPACE(skb->dev))) {
 		printk("VANET-debug: skb_cow failed, need to drop\n");
@@ -730,6 +738,9 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 	ipv6h->hop_limit--;
 	IP6CB(skb)->flags |= IP6SKB_FORWARDED;
 
+	/**
+	 * VANET: TODO FIXME skb->len contains IPv6 header's length
+	 */
 	if (skb->len > VANET_DATALEN_MAX) {
 		printk("VANET-debug: %s MTU(%d) exceed, DROP\n", __func__, VANET_DATALEN_MAX);
 		goto out_free;

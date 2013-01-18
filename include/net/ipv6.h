@@ -119,7 +119,13 @@ struct frag_hdr {
 			// ATTENSTION: suppose VANET safety messaging interval is 1 sec.
 #define VANET_IF_NAME "a5k0" // used in vanet-spec socket initial.
 #define VANET_IF_NAME_STR "a5k%d" // used in ieee80211_register_hw()
-#define VANET_DATALEN_MAX 1440 // maximum data length, WLAN-MTU correlate.
+/**
+ * Maximum data length, wlan's MTU correlate.
+ * The DATA means anything totally handed from application to socket layer. For raw socket,
+ * even though the data may contains lower layer header, like ICMP, IP, or IPv6 header,
+ * this maximum length is effective too.
+ */
+#define VANET_DATALEN_MAX 1440
 #define VANET_UC_HL_DEFAULT 3 // vanet unicast packet default hop limit.
 #define VANET_LL_RESERVED_SPACE 16 // see more in LL_RESERVED_SPACE.
 #define VN_MC_GRP_1 (0xFF050000)

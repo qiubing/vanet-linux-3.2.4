@@ -209,6 +209,12 @@ lookup_protocol:
 	np->ipv6only	= net->ipv6.sysctl.bindv6only;
 
 #if VANET_UNICAST_FORWARD
+	/**
+	 * VANET: TODO XXX FIXME when vanet device (a5k0) exits, all IPv6 socket would
+	 * have to be initialized as vanet-spec socket.
+	 * How could we normally use none-vanet device's IPv6 socket and IPv6
+	 * application when vanet device exits?
+	 */
 	ndev = dev_get_by_name(sk->sk_net, VANET_IF_NAME);
 	if (ndev) { // VANET: Have vanet interface, DO vanet-spec socket initial.
 		printk("VANET-debug: %s using vanet-spec socket config\n", __func__);

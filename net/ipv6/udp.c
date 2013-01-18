@@ -990,6 +990,9 @@ out:
 	return err;
 }
 
+/**
+ * VANET: XXX only support unicast now.
+ */
 int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 {
 	struct udp_sock *up = udp_sk(sk);
@@ -1072,8 +1075,11 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	}
 	if (!fl6.flowi6_oif)
 		fl6.flowi6_oif = sk->sk_bound_dev_if;
-	if (!fl6.flowi6_oif)
-		fl6.flowi6_oif = np->sticky_pktinfo.ipi6_ifindex;
+	if (!fl6.flowi6_oif) {
+		printk("VANET-error: %s tried sin6_scope_id and sk_bound_dev_if, but oif==0\n",
+				__func__);
+		return -EINVAL;
+	}
 
 	fl6.flowi6_mark = sk->sk_mark;
 
@@ -1131,10 +1137,11 @@ int udpv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	if (hlimit < 0) {
 		hlimit = np->hop_limit;
 		if (hlimit < 0) {
-			printk("VANET-debug: %s hoplimit using default 1\n", __func__);
-			hlimit = 1;
+			printk("VANET-debug: %s user and socket don't care hop_limit\n", __func__);
+			printk("VANET-debug: %s using default unicast hop limit %d\n",
+					__func__, VANET_UC_HL_DEFAULT);
+			hlimit = VANET_UC_HL_DEFAULT;
 		}
-		printk("VANET-debug: %s hop limit is %d\n", __func__, hlimit);
 	}
 	if (tclass < 0) {
 		tclass = np->tclass;

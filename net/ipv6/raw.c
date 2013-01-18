@@ -838,6 +838,11 @@ static int rawv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 			return -EINVAL;
 
 		daddr = &sin6->sin6_addr;
+		if (ipv6_addr_is_multicast(daddr)) {
+			printk("VANET-error: %s do not support multicast message\n",
+					__func__);
+			return -EINVAL;
+		}
 
 		if (addr_len >= sizeof(struct sockaddr_in6) &&
 		    sin6->sin6_scope_id &&
@@ -852,8 +857,11 @@ static int rawv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 	if (fl6.flowi6_oif == 0)
 		fl6.flowi6_oif = sk->sk_bound_dev_if;
 
-	if (fl6.flowi6_oif == 0)
-		printk("VANET-error: %s oif = 0\n", __func__);
+	if (fl6.flowi6_oif == 0) {
+		printk("VANET-error: %s tried sin6_scope_id and sk_bound_dev_if, but oif = 0\n",
+				__func__);
+		return -EINVAL;
+	}
 
 	if (msg->msg_controllen) {
 		printk("VANET-error: %s do not support msg_control\n", __func__);
@@ -881,16 +889,10 @@ static int rawv6_sendmsg_vanet(struct sock *sk, struct msghdr *msg, size_t len)
 		}
 	}
 
-	if (!fl6.flowi6_oif && ipv6_addr_is_multicast(&fl6.daddr))
-		fl6.flowi6_oif = np->mcast_oif;
-
 	if (hlimit < 0) {
-		if (ipv6_addr_is_multicast(&fl6.daddr))
-			hlimit = np->mcast_hops;
-		else
-			hlimit = np->hop_limit;
+		hlimit = np->hop_limit;
 		if (hlimit < 0) {
-			printk("VANET-debug: %s np's hop_limit invalid, set %d\n",
+			printk("VANET-debug: %s np's hop_limit invalid, set default %d\n",
 					__func__, VANET_UC_HL_DEFAULT);
 			hlimit = VANET_UC_HL_DEFAULT;
 		}
@@ -938,13 +940,16 @@ static int rawv6_sendmsg(struct kiocb *iocb, struct sock *sk,
 	u16 proto;
 	int err;
 
+	if (msg->msg_flags & MSG_VANET) {
 #if VANET_UNICAST_FORWARD
-//	printk("VANET-debug: %s through vanet process, data length[%u]\n",
-//			__func__, len);
-	err = rawv6_sendmsg_vanet(sk, msg, len);
-	/* VANET TODO: err control and return */
-	return err;
+		err = rawv6_sendmsg_vanet(sk, msg, len);
+		return err;
+		/* VANET TODO: err control and return*/
+#else
+		printk("VANET-debug: %s get vanet unicast packet, drop\n", __func__);
+		return -EINVAL;
 #endif
+	}
 
 	/* Rough check on arithmetic overflow,
 	   better check is made in ip6_append_data().
