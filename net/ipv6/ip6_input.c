@@ -65,7 +65,7 @@ int ip6_uc_forward_vanet(struct sk_buff *skb, struct net_device *dev)
 	struct ipv6hdr *ipv6h;
 	int err;
 
-	printk("VANET-debug: %s\n", __func__);
+//	printk("VANET-debug: %s\n", __func__);
 	ipv6h = ipv6_hdr(skb);
 
 	if (ipv6h->hop_limit <= 1) {
@@ -530,11 +530,13 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 #endif
 	id = ((fl[0] & 0xf) << 16) + (fl[1] << 8) + fl[2];
 
+#if 0
 	printk("VANET-debug: %s node<", __func__);
 	for (i=0; i<sizeof(struct in6_addr); i++) {
 		printk("%2x", ipv6h->saddr.s6_addr[i]);
 	}
 	printk(">\tid<%u>\n", id);
+#endif
 
 	htep = &vn_hash_table[VN_HASH(ipv6h->saddr)];
 	release = NULL;
@@ -635,11 +637,13 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 		}
 		spin_unlock_bh(&htep->lock);
 
+#if 0
 		printk("VANET-debug: %s VIA<", __func__);
 		for (i=0; i<ETH_ALEN-1; i++)
 			printk("%2x:", vnp->mrt_via[i]);
 		printk("%2x>\tHOP_LIMIT<%u>\tTIME<%lu>\n", vnp->mrt_via[ETH_ALEN-1],
 						vnp->mrt_hl, vnp->mrt_update);
+#endif
 	}
 #endif
 
@@ -711,7 +715,7 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 	ipv6h = ipv6_hdr(skb);
 
 	if (ipv6h->hop_limit <= 1) {
-		printk("VANET-debug: %s hop_limit less than 1, DROP\n", __func__);
+//		printk("VANET-debug: %s hop_limit less than 1, DROP\n", __func__);
 		goto out_free;
 	}
 
@@ -719,7 +723,7 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 	 * VANET: XXX key process, check duplication of forwarded packet
 	 */
 	if (vanet_check_mc_dup(skb)) {
-		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
+//		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
 		goto out_free;
 	}
 

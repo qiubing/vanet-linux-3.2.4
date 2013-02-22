@@ -286,6 +286,7 @@ int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	int addr_type = 0;
 	int err = 0;
 
+	printk("VANET-debug: %s\n", __func__);
 	/* If the socket has its own bind function then use it. */
 	if (sk->sk_prot->bind)
 		return sk->sk_prot->bind(sk, uaddr, addr_len);

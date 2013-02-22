@@ -443,6 +443,7 @@ struct sta_info *ieee80211_ibss_add_sta(struct ieee80211_sub_if_data *sdata,
 	if (ifibss->state == IEEE80211_IBSS_MLME_SEARCH) {
 		/**
 		 * VANET-debug: XXX do not care ifibss->state
+		 * 	TODO FIXME how to ieee80211_sta_expire???
 		 */
 //		printk("VANET-debug: %s ifibss->state is IEEE80211_IBSS_MLME_SEARCH\n",
 //				__func__);

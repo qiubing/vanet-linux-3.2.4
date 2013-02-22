@@ -102,6 +102,7 @@ static unsigned int udp6_portaddr_hash(struct net *net,
 
 int udp_v6_get_port(struct sock *sk, unsigned short snum)
 {
+	printk("VANET-debug: %s\n", __func__);
 	unsigned int hash2_nulladdr =
 		udp6_portaddr_hash(sock_net(sk), &in6addr_any, snum);
 	unsigned int hash2_partial = 
@@ -1507,6 +1508,7 @@ void udpv6_destroy_sock(struct sock *sk)
 int udpv6_setsockopt(struct sock *sk, int level, int optname,
 		     char __user *optval, unsigned int optlen)
 {
+	printk("VANET-debug: %s\n", __func__);
 	if (level == SOL_UDP  ||  level == SOL_UDPLITE)
 		return udp_lib_setsockopt(sk, level, optname, optval, optlen,
 					  udp_v6_push_pending_frames);
@@ -1527,6 +1529,7 @@ int compat_udpv6_setsockopt(struct sock *sk, int level, int optname,
 int udpv6_getsockopt(struct sock *sk, int level, int optname,
 		     char __user *optval, int __user *optlen)
 {
+	printk("VANET-debug: %s\n", __func__);
 	if (level == SOL_UDP  ||  level == SOL_UDPLITE)
 		return udp_lib_getsockopt(sk, level, optname, optval, optlen);
 	return ipv6_getsockopt(sk, level, optname, optval, optlen);
