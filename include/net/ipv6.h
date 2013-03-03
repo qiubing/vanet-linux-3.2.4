@@ -126,12 +126,13 @@ struct frag_hdr {
  * this maximum length is effective too.
  */
 #define VANET_DATALEN_MAX 1440
-#define VANET_UC_HL_DEFAULT 3 // vanet unicast packet default hop limit.
+#define VANET_UC_HL_DEFAULT 4 // vanet unicast packet default hop limit.
 #define VANET_LL_RESERVED_SPACE 16 // see more in LL_RESERVED_SPACE.
 #define VN_MC_GRP_1 (0xFF050000)
 #define VN_MC_GRP_2 (0x0)
 #define VN_MC_GRP_3 (0x0)
 #define VN_MC_GRP_4 (0x37)
+#define VN_MC_GRP_4_T (0x39)
 #define VANET_BM_LEN 16 // *8 bits
 #define VANET_BM_TOTAL (VANET_BM_LEN*8)
 #define VANET_BM_INTERVAL 32
@@ -157,6 +158,7 @@ struct vanet_node {
 #endif
 
 	unsigned char bitmap[VANET_BM_LEN];
+	unsigned char bitmap_t[VANET_BM_LEN];
 };
 
 struct vn_htentry {
@@ -166,8 +168,10 @@ struct vn_htentry {
 };
 
 extern struct in6_addr vanet_mc_grp;
+extern struct in6_addr vanet_mc_grp_t;
 extern struct in6_addr vanet_self_lladdr;
 extern unsigned char vanet_hhd[ETH_HLEN];
+extern unsigned char vanet_hhd_t[ETH_HLEN];
 
 extern struct kmem_cache *vanet_node_cache __read_mostly;
 extern struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;

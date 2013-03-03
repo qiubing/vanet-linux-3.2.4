@@ -331,8 +331,10 @@ int ip6_input(struct sk_buff *skb)
  * VANET: safety multicast packets fast forward
  */
 struct in6_addr vanet_mc_grp;
+struct in6_addr vanet_mc_grp_t;
 struct in6_addr vanet_self_lladdr;
 unsigned char vanet_hhd[ETH_HLEN];
+unsigned char vanet_hhd_t[ETH_HLEN];
 
 struct kmem_cache *vanet_node_cache __read_mostly;
 struct vn_htentry vn_hash_table[VN_HTLEN] __read_mostly;
@@ -417,10 +419,16 @@ vanet_add_node(struct vn_htentry *hte, struct vanet_node *vn)
 }
 
 static inline int
-vanet_check_packet_id(struct vanet_node *vn, u32 id)
+vanet_check_packet_id(struct vanet_node *vn, u32 id, int txt)
 {
-	unsigned char *bm = vn->bitmap;
+	unsigned char *bm;
 	int sf, sp, i;
+
+	if (txt == 0) {
+		bm = vn->bitmap;
+	} else {
+		bm = vn->bitmap_t;
+	}
 
 	/*
 	 * vanet bitmap only take care VANET_BM_TOTAL packet in a period of time,
@@ -497,7 +505,7 @@ int vanet_uc_find_path(struct in6_addr *dest, void *path)
  * return 0, if not forward this packet yet;
  * return 1, have forward this packet.
  */
-int vanet_check_mc_dup(struct sk_buff *skb)
+int vanet_check_mc_dup(struct sk_buff *skb, int txt)
 {
 	int ret = 0;
 	struct ipv6hdr *ipv6h;
@@ -561,10 +569,10 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 	 * VANET: XXX TODO BUG: during this lock gap vnp may be released!
 	 */
 
-	if (vnp != NULL) { // find node
+	if (vnp != NULL) { // found node
 		spin_lock_bh(&htep->lock);
 		vnp->lvt = jiffies;
-		ret = vanet_check_packet_id(vnp, id);
+		ret = vanet_check_packet_id(vnp, id, txt);
 		spin_unlock_bh(&htep->lock);
 	} else { // add node
 		printk("VANET-debug: DO NOT FIND node\n");
@@ -589,7 +597,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 		vnp = vanet_find_node_fast(htep, &ipv6h->saddr);
 		if (vnp == NULL) { // add node can proceed
 			vnp2->lvt = jiffies;
-			ret = vanet_check_packet_id(vnp2, id);
+			ret = vanet_check_packet_id(vnp2, id, txt);
 			vanet_add_node(htep, vnp2);
 			vnp = vnp2;
 			spin_unlock_bh(&htep->lock);
@@ -599,7 +607,7 @@ int vanet_check_mc_dup(struct sk_buff *skb)
 			printk(">\n");
 		} else { // during former process, node is added by other's
 			vnp->lvt = jiffies;
-			ret = vanet_check_packet_id(vnp, id);
+			ret = vanet_check_packet_id(vnp, id, txt);
 			spin_unlock_bh(&htep->lock);
 			kmem_cache_free(vanet_node_cache, vnp2);
 			printk("VANET-debug: WARNING other process has added this node\n");
@@ -666,18 +674,31 @@ int __init vanet_ipv6_init(void)
 				     __cpu_to_be32(VN_MC_GRP_2),
 				     __cpu_to_be32(VN_MC_GRP_3),
 				     __cpu_to_be32(VN_MC_GRP_4));
+	// For broadcast text message.
+	ipv6_addr_set(&vanet_mc_grp_t, __cpu_to_be32(VN_MC_GRP_1),
+				     __cpu_to_be32(VN_MC_GRP_2),
+				     __cpu_to_be32(VN_MC_GRP_3),
+				     __cpu_to_be32(VN_MC_GRP_4_T));
 	printk("VANET-debug: vanet_mc_grp address is ");
 	for (i=0; i<sizeof(struct in6_addr); i++) {
 		printk("%2x", vanet_mc_grp.s6_addr[i]);
 	}
 	printk("\n");
+	printk("VANET-debug: vanet_mc_grp_t address is ");
+	for (i=0; i<sizeof(struct in6_addr); i++) {
+		printk("%2x", vanet_mc_grp_t.s6_addr[i]);
+	}
+	printk("\n");
 	ipv6_eth_mc_map(&vanet_mc_grp, vanet_hhd);
+	ipv6_eth_mc_map(&vanet_mc_grp_t, vanet_hhd_t);
 	// vanet_hhd's source mac address is completed in addrconf_notify()
 	/*
 	 * VANET: ipv6 in ethernet prototype is 0x86dd
 	 */
 	vanet_hhd[ETH_HLEN-2] = 0x86;
 	vanet_hhd[ETH_HLEN-1] = 0xdd;
+	vanet_hhd_t[ETH_HLEN-2] = 0x86;
+	vanet_hhd_t[ETH_HLEN-1] = 0xdd;
 
 	/*
 	 * Slub initial
@@ -711,6 +732,7 @@ int __init vanet_ipv6_init(void)
 int ip6_mc_fast_forward(struct sk_buff *skb)
 {
 	struct ipv6hdr *ipv6h;
+	static int txt;
 
 	ipv6h = ipv6_hdr(skb);
 
@@ -719,10 +741,20 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 		goto out_free;
 	}
 
+	// VANET: FIXME XXX Hardcode 0x37 and 0x39 are not good
+	if (ipv6h->daddr.s6_addr[15] == 0x37) { // normal Vehicle Security Message
+		txt = 0;
+	} else if (ipv6h->daddr.s6_addr[15] == 0x39) { // text message
+		txt = 1;
+	} else {
+		printk("VANET-error: %s unknown multicast address\n", __func__);
+		goto out_free;
+	}
+
 	/*
 	 * VANET: XXX key process, check duplication of forwarded packet
 	 */
-	if (vanet_check_mc_dup(skb)) {
+	if (vanet_check_mc_dup(skb, txt)) {
 //		printk("VANET-debug: %s packet has been forward, DROP\n", __func__);
 		goto out_free;
 	}
@@ -755,7 +787,11 @@ int ip6_mc_fast_forward(struct sk_buff *skb)
 	 * VANET: XXX pay attention to vanet_hhd, it's fixed Ethernet Header for 
 	 * all IPv6 multicast packet
 	 */
-	memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
+	if (txt == 0)
+		memcpy(skb->data-ETH_HLEN, vanet_hhd, ETH_HLEN);
+	else
+		memcpy(skb->data-ETH_HLEN, vanet_hhd_t, ETH_HLEN);
+
 	skb_push(skb, ETH_HLEN);
 
 	return dev_queue_xmit(skb);
@@ -860,18 +896,19 @@ int ip6_mc_input(struct sk_buff *skb)
 			int i;
 
 			ipv6h = ipv6_hdr(skb2);
-			if (!ipv6_addr_equal(&vanet_mc_grp, &ipv6h->daddr)) {
+			if (ipv6_addr_equal(&vanet_mc_grp, &ipv6h->daddr) ||
+			    ipv6_addr_equal(&vanet_mc_grp_t, &ipv6h->daddr)) {
+				/*
+				 * VANET: process start point
+				 */
+				ip6_mc_fast_forward(skb2);
+			} else {
 				printk("VANET-debug: %s not vanet addr\n", __func__);
 				printk("VANET-debug: skb's daddr is ");
 				for (i=0; i<16; i++) printk("%2x", ipv6h->daddr.s6_addr[i]);
 				printk("\n");
 
 				ip6_mr_input(skb2);
-			} else {
-				/*
-				 * VANET: process start point
-				 */
-				ip6_mc_fast_forward(skb2);
 			}
 		}
 	}

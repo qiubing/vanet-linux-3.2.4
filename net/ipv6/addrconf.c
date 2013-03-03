@@ -2716,6 +2716,7 @@ static int addrconf_notify(struct notifier_block *this, unsigned long event,
 			}
 			printk("%2x\n", dev->dev_addr[ETH_ALEN-1]);
 			memcpy(vanet_hhd+ETH_ALEN, dev->dev_addr, ETH_ALEN);
+			memcpy(vanet_hhd_t+ETH_ALEN, dev->dev_addr, ETH_ALEN);
 			printk("VANET-debug: ip6 vanet forward data inital completed\n");
 		}
 
