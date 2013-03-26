@@ -110,8 +110,10 @@ int ip6_append_data_vanet(struct sock *sk, int getfrag(void *from, char *to,
 
 	if (sk->sk_type == SOCK_DGRAM) {
 		err = sock_tx_timestamp(sk, &tx_flags);
-		if (err)
+		if (err) {
+			printk("VANET-debug: %s sock_tx_timestamp failed\n", __func__);
 			return err;
+		}
 	}
 
 	alloclen = length + sizeof(struct ipv6hdr) + sizeof(struct frag_hdr);
@@ -120,8 +122,10 @@ int ip6_append_data_vanet(struct sock *sk, int getfrag(void *from, char *to,
 			__func__, alloclen);
 #endif
 	skb = sock_alloc_send_skb(sk, alloclen + hh_len, (flags & MSG_DONTWAIT), &err);
-	if (skb == NULL)
+	if (skb == NULL) {
+		printk("VANET-debug: %s sk_buff alloc failed\n", __func__);
 		return err;
+	}
 	skb->ip_summed = csummode;
 	skb->csum = 0;
 	skb_reserve(skb, hh_len + sizeof(struct frag_hdr));
@@ -135,6 +139,7 @@ int ip6_append_data_vanet(struct sock *sk, int getfrag(void *from, char *to,
 	skb->transport_header = skb->network_header + sizeof(struct ipv6hdr);
 
 	if (getfrag(from, data+transhdrlen, 0, datalen, 0, skb) < 0) {
+		printk("VANET-debug: %s getfrag failed\n", __func__);
 		kfree_skb(skb);
 		return -EFAULT;
 	}
