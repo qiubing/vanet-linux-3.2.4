@@ -1553,10 +1553,8 @@ struct sk_buff *sock_alloc_send_pskb(struct sock *sk, unsigned long header_len,
 		set_bit(SOCK_ASYNC_NOSPACE, &sk->sk_socket->flags);
 		set_bit(SOCK_NOSPACE, &sk->sk_socket->flags);
 		err = -EAGAIN;
-		if (!timeo) {
-			printk("VANET-debug: %s sk_wmem_alloc >= sk_sendbuf\n", __func__);
+		if (!timeo)
 			goto failure;
-		}
 		if (signal_pending(current))
 			goto interrupted;
 		timeo = sock_wait_for_wmem(sk, timeo);

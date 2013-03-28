@@ -606,7 +606,7 @@ static void icmpv6_echo_reply_vanet(struct sk_buff *skb)
 			MSG_DONTWAIT);
 	if (err) {
 		struct sk_buff *skb;
-		printk("VANET-debug: %s flush pending frames\n", __func__);
+//		printk("VANET-debug: %s flush pending frames\n", __func__);
 		while ((skb = __skb_dequeue_tail(&sk->sk_write_queue)) != NULL)
 			kfree_skb(skb);
 	} else {
